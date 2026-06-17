@@ -1,22 +1,26 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: LocalMarket API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: ads
+    description: Ads/Publicités
+  - name: admin
+    description: Admin operations
+  - name: stats
+    description: Statistics
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +28,207 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /ads:
+    get:
+      operationId: listAds
+      tags: [ads]
+      summary: List published ads
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: location
+          in: query
+          schema:
+            type: string
+        - name: product
+          in: query
+          schema:
+            type: string
+        - name: quantity
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of ads
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Ad"
+    post:
+      operationId: createAd
+      tags: [ads]
+      summary: Submit a new ad
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdInput"
+      responses:
+        "201":
+          description: Created ad
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ad"
+
+  /ads/{id}:
+    get:
+      operationId: getAd
+      tags: [ads]
+      summary: Get ad by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Ad
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ad"
+
+  /stats:
+    get:
+      operationId: getStats
+      tags: [stats]
+      summary: Get platform statistics
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Stats"
+
+  /admin/ads:
+    get:
+      operationId: adminListAds
+      tags: [admin]
+      summary: Admin - list all ads (including pending)
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: All ads
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Ad"
+
+  /admin/ads/{id}/status:
+    patch:
+      operationId: updateAdStatus
+      tags: [admin]
+      summary: Admin - update ad status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdStatusUpdate"
+      responses:
+        "200":
+          description: Updated ad
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ad"
+
+  /admin/ads/{id}:
+    delete:
+      operationId: deleteAd
+      tags: [admin]
+      summary: Admin - delete ad
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /admin/branding:
+    get:
+      operationId: getBranding
+      tags: [admin]
+      summary: Get current branding settings
+      responses:
+        "200":
+          description: Branding settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Branding"
+    put:
+      operationId: updateBranding
+      tags: [admin]
+      summary: Update branding settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Branding"
+      responses:
+        "200":
+          description: Updated branding
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Branding"
+
+  /admin/login:
+    post:
+      operationId: adminLogin
+      tags: [admin]
+      summary: Admin login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminCredentials"
+      responses:
+        "200":
+          description: Login success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResult"
+        "401":
+          description: Unauthorized
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +239,104 @@ components:
       required:
         - status
 
+    Ad:
+      type: object
+      required: [id, title, location, product, category, status, createdAt]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        location:
+          type: string
+        product:
+          type: string
+        quantity:
+          type: ["string", "null"]
+        category:
+          type: string
+        contactPhone:
+          type: ["string", "null"]
+        contactEmail:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, published, rejected]
+        createdAt:
+          type: string
+
+    AdInput:
+      type: object
+      required: [title, location, product, category]
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        location:
+          type: string
+        product:
+          type: string
+        quantity:
+          type: string
+        category:
+          type: string
+        contactPhone:
+          type: string
+        contactEmail:
+          type: string
+
+    AdStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [pending, published, rejected]
+
+    Stats:
+      type: object
+      required: [totalAds, totalExchangers, satisfaction]
+      properties:
+        totalAds:
+          type: integer
+        totalExchangers:
+          type: integer
+        satisfaction:
+          type: number
+
+    Branding:
+      type: object
+      properties:
+        logoUrl:
+          type: ["string", "null"]
+        primaryColor:
+          type: string
+        accentColor:
+          type: string
+        backgroundColor:
+          type: string
+        fontFamily:
+          type: string
+        siteName:
+          type: string
+
+    AdminCredentials:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+
+    LoginResult:
+      type: object
+      required: [success, token]
+      properties:
+        success:
+          type: boolean
+        token:
+          type: string

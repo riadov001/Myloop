@@ -1,10 +1,11 @@
-# [Project name]
+# LocalMarket
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Plateforme d'échanges locaux connectant voisins, agriculteurs et artisans pour échanger produits et ressources localement.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080)
+- `pnpm --filter @workspace/localmarket run dev` — run the frontend (port 26010)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
@@ -14,6 +15,7 @@ _Replace the heading above with the project's name, and this line with one sente
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
+- Frontend: React + Vite + Tailwind CSS + shadcn/ui + wouter
 - API: Express 5
 - DB: PostgreSQL + Drizzle ORM
 - Validation: Zod (`zod/v4`), `drizzle-zod`
@@ -22,23 +24,43 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- DB schema: `lib/db/src/schema/` (ads.ts, branding.ts)
+- API contract: `lib/api-spec/openapi.yaml`
+- Generated hooks: `lib/api-client-react/src/generated/api.ts`
+- API routes: `artifacts/api-server/src/routes/` (ads.ts, stats.ts, branding.ts, admin.ts)
+- Frontend pages: `artifacts/localmarket/src/pages/`
+- Layouts: `artifacts/localmarket/src/components/layout/`
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- OpenAPI-first: spec in `lib/api-spec/openapi.yaml` gates all codegen; never hand-write types that Orval already produces
+- Admin auth: simple token-based (localStorage) with hardcoded credentials for now — not production-ready
+- Branding: stored in DB (`branding` table), loaded via API, applied as CSS custom properties live
+- All ads submitted via public form go into `pending` state; admin must validate/reject
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- **Page Accueil**: hero + barre de recherche 3 champs (Localisation | Produit | Quantité) + carte interactive placeholder + stats plateforme + dernières annonces
+- **Publicités**: liste filtrée par catégorie/localisation/produit, cartes d'annonces avec contact
+- **Déposer une publicité**: formulaire complet soumis en attente de validation admin
+- **Espace Admin** (`/admin`): login protégé → dashboard avec 3 onglets: Annonces (valider/refuser/supprimer), Branding (logo, couleurs, police, aperçu live), Paramètres
+
+## Admin credentials (dev only)
+
+- Email: `admin@localmarket.fr`
+- Password: `admin123`
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Interface entièrement en français
+- Design mobile-first, bleu dominant (#2563eb)
+- Pas d'emojis dans l'UI
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- After changing OpenAPI spec, always run codegen: `pnpm --filter @workspace/api-spec run codegen`
+- After changing DB schema, run: `pnpm --filter @workspace/db run push`
+- Admin auth uses localStorage token — clear it to logout or change `localmarket-admin-token-2026`
 
 ## Pointers
 
