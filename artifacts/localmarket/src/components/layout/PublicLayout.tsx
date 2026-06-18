@@ -22,7 +22,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
             <nav className="hidden md:flex gap-6">
               <Link href="/" className="text-sm font-medium transition-colors hover:text-primary">Accueil</Link>
               <Link href="/publicites" className="text-sm font-medium transition-colors hover:text-primary">Publicités</Link>
-              <Link href="/deposer" className="text-sm font-medium transition-colors hover:text-primary">Déposer une publicité</Link>
+              <Link href="/deposer" className="text-sm font-medium transition-colors hover:text-primary">Déposer une annonce</Link>
             </nav>
           </div>
           
@@ -48,7 +48,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
               <nav className="flex flex-col gap-4 mt-8">
                 <Link href="/" className="text-lg font-medium">Accueil</Link>
                 <Link href="/publicites" className="text-lg font-medium">Publicités</Link>
-                <Link href="/deposer" className="text-lg font-medium">Déposer une publicité</Link>
+                <Link href="/deposer" className="text-lg font-medium">Déposer une annonce</Link>
                 <hr className="my-4" />
                 <Button variant="outline" className="w-full text-yellow-600 border-yellow-600 justify-start">Faire un don</Button>
                 <Button variant="ghost" className="w-full justify-start">Se connecter</Button>
