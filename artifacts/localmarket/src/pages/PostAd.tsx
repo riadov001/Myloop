@@ -8,20 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCreateAd } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle2, ArrowLeft } from "lucide-react";
-
-const CATEGORIES = [
-  "FRUITS & LÉGUMES",
-  "VIANDES & ŒUFS",
-  "BOIS & MATÉRIAUX",
-  "ARTISANAT",
-  "SERVICES",
-  "AUTRES"
-];
 
 const formSchema = z.object({
   title: z.string().min(5, "Le titre doit faire au moins 5 caractères"),
@@ -29,7 +19,7 @@ const formSchema = z.object({
   location: z.string().min(2, "La localisation est requise"),
   product: z.string().min(2, "Le produit est requis"),
   quantity: z.string().optional(),
-  category: z.string().min(1, "La catégorie est requise"),
+  category: z.string().optional(),
   contactPhone: z.string().optional(),
   contactEmail: z.string().email("Email invalide").optional().or(z.literal('')),
 });
@@ -48,7 +38,7 @@ export default function PostAd() {
       location: "",
       product: "",
       quantity: "",
-      category: "",
+      category: "AUTRES",
       contactPhone: "",
       contactEmail: "",
     },
@@ -103,7 +93,7 @@ export default function PostAd() {
           <Button variant="ghost" onClick={() => setLocation("/")} className="mb-4 -ml-4 text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4 mr-2" /> Retour à l'accueil
           </Button>
-          <h1 className="text-3xl font-bold">Déposer une publicité</h1>
+          <h1 className="text-3xl font-bold">Déposer une annonce</h1>
           <p className="text-muted-foreground mt-2">Partagez vos produits, ressources ou services avec la communauté locale.</p>
         </div>
       </div>
@@ -133,44 +123,19 @@ export default function PostAd() {
                     )}
                   />
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField
-                      control={form.control}
-                      name="category"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Catégorie <span className="text-destructive">*</span></FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger className="h-12">
-                                <SelectValue placeholder="Sélectionner une catégorie" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {CATEGORIES.map(cat => (
-                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="location"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Localisation <span className="text-destructive">*</span></FormLabel>
-                          <FormControl>
-                            <Input placeholder="Ex: Place du marché, Centre-ville" className="h-12" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                  <FormField
+                    control={form.control}
+                    name="location"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Localisation <span className="text-destructive">*</span></FormLabel>
+                        <FormControl>
+                          <Input placeholder="Ex: Place du marché, Centre-ville" className="h-12" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField

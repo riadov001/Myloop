@@ -1,23 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useLocation, useSearch } from "wouter";
-import { Search, MapPin, Package, Scale, Filter } from "lucide-react";
+import { Search, MapPin, Package, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { useListAds } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
-
-const CATEGORIES = [
-  "FRUITS & LÉGUMES",
-  "VIANDES & ŒUFS",
-  "BOIS & MATÉRIAUX",
-  "ARTISANAT",
-  "SERVICES",
-  "AUTRES"
-];
 
 export default function AdsList() {
   const searchString = useSearch();
@@ -26,7 +15,6 @@ export default function AdsList() {
   const [location, setSearchLocation] = useState(params.get("location") || "");
   const [product, setProduct] = useState(params.get("product") || "");
   const [quantity, setQuantity] = useState(params.get("quantity") || "");
-  const [category, setCategory] = useState(params.get("category") || "");
 
   const [, setUrlLocation] = useLocation();
 
@@ -34,7 +22,6 @@ export default function AdsList() {
     location: location || undefined,
     product: product || undefined,
     quantity: quantity || undefined,
-    category: category || undefined,
   });
 
   const handleSearch = (e: React.FormEvent) => {
@@ -43,16 +30,6 @@ export default function AdsList() {
     if (location) newParams.set("location", location);
     if (product) newParams.set("product", product);
     if (quantity) newParams.set("quantity", quantity);
-    if (category) newParams.set("category", category);
-    setUrlLocation(`/publicites?${newParams.toString()}`);
-  };
-
-  const handleCategoryToggle = (cat: string) => {
-    const newCat = category === cat ? "" : cat;
-    setCategory(newCat);
-    const newParams = new URLSearchParams(searchString);
-    if (newCat) newParams.set("category", newCat);
-    else newParams.delete("category");
     setUrlLocation(`/publicites?${newParams.toString()}`);
   };
 
@@ -98,21 +75,6 @@ export default function AdsList() {
             </form>
           </Card>
           
-          <div className="mt-6 flex flex-wrap items-center gap-2">
-            <span className="text-sm text-muted-foreground font-medium flex items-center mr-2">
-              <Filter className="h-4 w-4 mr-1.5" /> Catégories :
-            </span>
-            {CATEGORIES.map(cat => (
-              <Badge 
-                key={cat} 
-                variant={category === cat ? "default" : "outline"}
-                className={`cursor-pointer transition-colors ${category !== cat ? 'hover:bg-primary/10 hover:text-primary hover:border-primary/30' : ''}`}
-                onClick={() => handleCategoryToggle(cat)}
-              >
-                {cat}
-              </Badge>
-            ))}
-          </div>
         </div>
       </div>
 
