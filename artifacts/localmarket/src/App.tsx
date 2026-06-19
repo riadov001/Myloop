@@ -10,6 +10,8 @@ import AdDetail from "@/pages/AdDetail";
 import AdminLogin from "@/pages/AdminLogin";
 import AdminDashboard from "@/pages/AdminDashboard";
 import { Legal, CGU, Privacy } from "@/pages/Legal";
+import Login from "@/pages/Login";
+import Register from "@/pages/Register";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +24,8 @@ function Router() {
       <Route path="/deposer" component={PostAd} />
       <Route path="/admin" component={AdminLogin} />
       <Route path="/admin/dashboard" component={AdminDashboard} />
+      <Route path="/connexion" component={Login} />
+      <Route path="/inscription" component={Register} />
       <Route path="/mentions-legales" component={Legal} />
       <Route path="/cgu" component={CGU} />
       <Route path="/politique-confidentialite" component={Privacy} />

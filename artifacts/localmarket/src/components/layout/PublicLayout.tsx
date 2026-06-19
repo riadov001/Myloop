@@ -32,8 +32,8 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
             </Button>
             <div className="text-sm border rounded px-2 py-1 bg-muted/50 font-medium">FR</div>
             <div className="flex items-center gap-2">
-              <Button variant="ghost">Se connecter</Button>
-              <Button>S'inscrire</Button>
+              <Button variant="ghost" onClick={() => setLocation("/connexion")}>Se connecter</Button>
+              <Button onClick={() => setLocation("/inscription")}>S'inscrire</Button>
             </div>
           </div>
 
@@ -51,8 +51,8 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
                 <Link href="/deposer" className="text-lg font-medium">Déposer une annonce</Link>
                 <hr className="my-4" />
                 <Button variant="outline" className="w-full text-yellow-600 border-yellow-600 justify-start">Faire un don</Button>
-                <Button variant="ghost" className="w-full justify-start">Se connecter</Button>
-                <Button className="w-full justify-start">S'inscrire</Button>
+                <Button variant="ghost" className="w-full justify-start" onClick={() => setLocation("/connexion")}>Se connecter</Button>
+                <Button className="w-full justify-start" onClick={() => setLocation("/inscription")}>S'inscrire</Button>
               </nav>
             </SheetContent>
           </Sheet>
