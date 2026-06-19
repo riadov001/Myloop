@@ -184,6 +184,50 @@ export const UpdateBrandingResponse = zod.object({
 
 
 /**
+ * @summary Register a new user
+ */
+export const registerBodyPasswordMin = 8;
+
+
+
+export const RegisterBody = zod.object({
+  "name": zod.string(),
+  "email": zod.string().email(),
+  "password": zod.string().min(registerBodyPasswordMin)
+})
+
+
+/**
+ * @summary Login a user
+ */
+export const UserLoginBody = zod.object({
+  "email": zod.string().email(),
+  "password": zod.string()
+})
+
+export const UserLoginResponse = zod.object({
+  "token": zod.string(),
+  "user": zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "createdAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Get current authenticated user
+ */
+export const GetMeResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "createdAt": zod.string()
+})
+
+
+/**
  * @summary Admin login
  */
 export const AdminLoginBody = zod.object({

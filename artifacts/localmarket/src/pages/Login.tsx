@@ -6,23 +6,36 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useUserLogin } from "@workspace/api-client-react";
 
 export default function Login() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const loginMutation = useUserLogin();
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setLoading(false);
-    toast({
-      title: "Fonctionnalité à venir",
-      description: "La connexion utilisateur sera disponible prochainement.",
-    });
+    loginMutation.mutate(
+      { data: { email, password } },
+      {
+        onSuccess: (data) => {
+          localStorage.setItem("userToken", data.token);
+          localStorage.setItem("userName", data.user.name);
+          toast({ title: "Connexion réussie", description: `Bienvenue, ${data.user.name} !` });
+          setLocation("/");
+        },
+        onError: () => {
+          toast({
+            title: "Identifiants incorrects",
+            description: "Vérifiez votre email et mot de passe.",
+            variant: "destructive",
+          });
+        },
+      }
+    );
   };
 
   return (
@@ -57,15 +70,13 @@ export default function Login() {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     className="h-11 pl-10"
+                    autoComplete="email"
                   />
                 </div>
               </div>
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Mot de passe</Label>
-                  <button type="button" className="text-xs text-primary hover:underline">
-                    Mot de passe oublié ?
-                  </button>
                 </div>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -77,11 +88,16 @@ export default function Login() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     className="h-11 pl-10"
+                    autoComplete="current-password"
                   />
                 </div>
               </div>
-              <Button type="submit" className="w-full h-11 font-semibold mt-2" disabled={loading}>
-                {loading ? (
+              <Button
+                type="submit"
+                className="w-full h-11 font-semibold mt-2"
+                disabled={loginMutation.isPending}
+              >
+                {loginMutation.isPending ? (
                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Connexion...</>
                 ) : (
                   "Se connecter"

@@ -86,6 +86,30 @@ export interface LoginResult {
   token: string;
 }
 
+export interface RegisterInput {
+  name: string;
+  email: string;
+  /** @minLength 8 */
+  password: string;
+}
+
+export interface LoginInput {
+  email: string;
+  password: string;
+}
+
+export interface UserProfile {
+  id: number;
+  name: string;
+  email: string;
+  createdAt: string;
+}
+
+export interface AuthResult {
+  token: string;
+  user: UserProfile;
+}
+
 export type ListAdsParams = {
 category?: string;
 location?: string;

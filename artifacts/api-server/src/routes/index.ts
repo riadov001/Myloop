@@ -4,6 +4,7 @@ import adsRouter from "./ads";
 import statsRouter from "./stats";
 import brandingRouter from "./branding";
 import adminRouter from "./admin";
+import authRouter from "./auth";
 
 const router: IRouter = Router();
 
@@ -12,5 +13,6 @@ router.use(adsRouter);
 router.use(statsRouter);
 router.use(brandingRouter);
 router.use(adminRouter);
+router.use(authRouter);
 
 export default router;
