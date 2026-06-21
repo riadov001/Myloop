@@ -93,9 +93,8 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
             <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Navigation</h3>
             <ul className="space-y-2 text-sm">
               <li><Link href="/" className="hover:text-white transition-colors">Accueil</Link></li>
-              <li><Link href="#" className="hover:text-white transition-colors">Qui sommes-nous</Link></li>
-              <li><Link href="#" className="hover:text-white transition-colors">Services</Link></li>
-              <li><Link href="#" className="hover:text-white transition-colors">FAQ</Link></li>
+              <li><Link href="/publicites" className="hover:text-white transition-colors">Publicités</Link></li>
+              <li><Link href="/deposer" className="hover:text-white transition-colors">Déposer une annonce</Link></li>
             </ul>
           </div>
 

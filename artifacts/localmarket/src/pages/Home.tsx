@@ -211,7 +211,7 @@ export default function Home() {
               <Card
                 key={ad.id}
                 className="overflow-hidden border-border/50 bg-card hover:border-primary/40 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300 group cursor-pointer"
-                onClick={() => setLocation(`/publicites`)}
+                onClick={() => setLocation(`/publicites/${ad.id}`)}
                 data-testid={`card-ad-${ad.id}`}
               >
                 <div className="h-36 bg-primary/10 flex items-center justify-center relative overflow-hidden">

@@ -171,7 +171,7 @@ export default function AdsList() {
             ))
           ) : ads?.length ? (
             ads.map((ad) => (
-              <Card key={ad.id} className="overflow-hidden flex flex-col hover-elevate transition-all border-border/50 bg-card group">
+              <Card key={ad.id} className="overflow-hidden flex flex-col hover-elevate transition-all border-border/50 bg-card group cursor-pointer" onClick={() => setUrlLocation(`/publicites/${ad.id}`)}>
                 <div className="h-48 bg-primary/5 flex items-center justify-center relative border-b border-border/50">
                   <Package className="h-16 w-16 text-primary/20 group-hover:scale-110 transition-transform duration-500" />
                   <div className="absolute top-3 left-3 bg-background/95 backdrop-blur-sm px-2.5 py-1 text-xs font-semibold rounded-md shadow-sm border border-border/50">
