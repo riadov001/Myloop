@@ -218,7 +218,10 @@ export default function AdsList() {
                       </div>
                     )}
                   </div>
-                  <Button className="w-full mt-6 group-hover:bg-primary group-hover:text-primary-foreground transition-colors shadow-sm">
+                  <Button
+                    className="w-full mt-6 group-hover:bg-primary group-hover:text-primary-foreground transition-colors shadow-sm"
+                    onClick={(e) => { e.stopPropagation(); setUrlLocation(`/publicites/${ad.id}`); }}
+                  >
                     Contacter
                   </Button>
                 </CardContent>
