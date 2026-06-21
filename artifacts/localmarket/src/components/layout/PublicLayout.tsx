@@ -1,8 +1,44 @@
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Menu, Triangle, Activity } from "lucide-react";
+import { Menu, Triangle, Activity, Heart, LogOut, User, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useHealthCheck } from "@workspace/api-client-react";
+
+function useAuth() {
+  const [user, setUser] = useState<{ name: string; token: string } | null>(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem("userToken");
+    const name = localStorage.getItem("userName");
+    if (token && name) setUser({ token, name });
+
+    const handler = () => {
+      const t = localStorage.getItem("userToken");
+      const n = localStorage.getItem("userName");
+      setUser(t && n ? { token: t, name: n } : null);
+    };
+    window.addEventListener("storage", handler);
+    window.addEventListener("auth-change", handler);
+    return () => { window.removeEventListener("storage", handler); window.removeEventListener("auth-change", handler); };
+  }, []);
+
+  const logout = () => {
+    localStorage.removeItem("userToken");
+    localStorage.removeItem("userName");
+    setUser(null);
+    window.dispatchEvent(new Event("auth-change"));
+  };
+
+  return { user, logout };
+}
 
 function useIsAdmin() {
   if (typeof window === "undefined") return false;
@@ -13,6 +49,21 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
   const [, setLocation] = useLocation();
   const { data: health } = useHealthCheck();
   const isAdmin = useIsAdmin();
+  const { user, logout } = useAuth();
+  const [open, setOpen] = useState(false);
+
+  const handleLogout = () => {
+    logout();
+    setLocation("/");
+    setOpen(false);
+  };
+
+  const navLinks = [
+    { href: "/", label: "Accueil" },
+    { href: "/publicites", label: "Publicités" },
+    { href: "/deposer", label: "Déposer une annonce" },
+    { href: "/tarifs", label: "Tarifs" },
+  ];
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-background font-sans text-foreground">
@@ -26,40 +77,128 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
               <span className="text-xl font-bold tracking-tight text-foreground">LocalMarket</span>
             </Link>
             <nav className="hidden md:flex gap-6">
-              <Link href="/" className="text-sm font-medium transition-colors hover:text-primary">Accueil</Link>
-              <Link href="/publicites" className="text-sm font-medium transition-colors hover:text-primary">Publicités</Link>
-              <Link href="/deposer" className="text-sm font-medium transition-colors hover:text-primary">Déposer une annonce</Link>
+              {navLinks.map(l => (
+                <Link key={l.href} href={l.href} className="text-sm font-medium transition-colors hover:text-primary">
+                  {l.label}
+                </Link>
+              ))}
             </nav>
           </div>
 
-          <div className="hidden md:flex items-center gap-4">
-            <Button variant="outline" className="text-yellow-600 border-yellow-600 hover:bg-yellow-50 font-semibold">
-              Dons
+          <div className="hidden md:flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400 font-semibold gap-1.5"
+              onClick={() => setLocation("/dons")}
+            >
+              <Heart className="h-3.5 w-3.5 fill-current" />
+              Soutenir
             </Button>
-            <div className="text-sm border rounded px-2 py-1 bg-muted/50 font-medium">FR</div>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" onClick={() => setLocation("/connexion")}>Se connecter</Button>
-              <Button onClick={() => setLocation("/inscription")}>S'inscrire</Button>
-            </div>
+
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2 font-semibold">
+                    <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center">
+                      <User className="h-3.5 w-3.5 text-primary" />
+                    </div>
+                    <span className="max-w-[100px] truncate">{user.name}</span>
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <div className="px-3 py-2">
+                    <p className="text-sm font-semibold text-foreground truncate">{user.name}</p>
+                    <p className="text-xs text-muted-foreground">Compte LocalMarket</p>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setLocation("/deposer")} className="cursor-pointer">
+                    Déposer une annonce
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600 focus:text-red-600">
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Se déconnecter
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setLocation("/connexion")}>
+                  Se connecter
+                </Button>
+                <Button size="sm" onClick={() => setLocation("/inscription")} className="font-semibold">
+                  S'inscrire
+                </Button>
+              </div>
+            )}
           </div>
 
-          <Sheet>
+          <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild className="md:hidden">
               <Button variant="ghost" size="icon">
                 <Menu className="h-6 w-6" />
-                <span className="sr-only">Toggle menu</span>
+                <span className="sr-only">Menu</span>
               </Button>
             </SheetTrigger>
             <SheetContent side="right">
-              <nav className="flex flex-col gap-4 mt-8">
-                <Link href="/" className="text-lg font-medium">Accueil</Link>
-                <Link href="/publicites" className="text-lg font-medium">Publicités</Link>
-                <Link href="/deposer" className="text-lg font-medium">Déposer une annonce</Link>
-                <hr className="my-4" />
-                <Button variant="outline" className="w-full text-yellow-600 border-yellow-600 justify-start">Faire un don</Button>
-                <Button variant="ghost" className="w-full justify-start" onClick={() => setLocation("/connexion")}>Se connecter</Button>
-                <Button className="w-full justify-start" onClick={() => setLocation("/inscription")}>S'inscrire</Button>
-              </nav>
+              <div className="flex flex-col gap-4 mt-8">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded bg-primary text-primary-foreground">
+                    <Triangle className="h-5 w-5 fill-current" />
+                  </div>
+                  <span className="font-bold text-foreground">LocalMarket</span>
+                </div>
+
+                {navLinks.map(l => (
+                  <Link key={l.href} href={l.href} className="text-base font-medium hover:text-primary transition-colors" onClick={() => setOpen(false)}>
+                    {l.label}
+                  </Link>
+                ))}
+
+                <hr className="my-2" />
+
+                <Button
+                  variant="outline"
+                  className="w-full text-red-600 border-red-300 hover:bg-red-50 justify-start gap-2"
+                  onClick={() => { setLocation("/dons"); setOpen(false); }}
+                >
+                  <Heart className="h-4 w-4 fill-current" />
+                  Soutenir LocalMarket
+                </Button>
+
+                {user ? (
+                  <>
+                    <div className="flex items-center gap-2 p-3 bg-primary/5 rounded-lg">
+                      <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                        <User className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold truncate">{user.name}</p>
+                        <p className="text-xs text-muted-foreground">Connecté</p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-red-600 border-red-200 gap-2"
+                      onClick={handleLogout}
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Se déconnecter
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="ghost" className="w-full justify-start" onClick={() => { setLocation("/connexion"); setOpen(false); }}>
+                      Se connecter
+                    </Button>
+                    <Button className="w-full justify-start font-semibold" onClick={() => { setLocation("/inscription"); setOpen(false); }}>
+                      S'inscrire gratuitement
+                    </Button>
+                  </>
+                )}
+              </div>
             </SheetContent>
           </Sheet>
         </div>
@@ -95,6 +234,8 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
               <li><Link href="/" className="hover:text-white transition-colors">Accueil</Link></li>
               <li><Link href="/publicites" className="hover:text-white transition-colors">Publicités</Link></li>
               <li><Link href="/deposer" className="hover:text-white transition-colors">Déposer une annonce</Link></li>
+              <li><Link href="/tarifs" className="hover:text-white transition-colors">Tarifs & Plans</Link></li>
+              <li><Link href="/dons" className="hover:text-white transition-colors">Soutenir</Link></li>
             </ul>
           </div>
 
@@ -112,6 +253,9 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
         </div>
         <div className="container max-w-7xl mt-12 pt-8 border-t border-slate-800 text-sm text-slate-400 text-center flex flex-col md:flex-row justify-between items-center gap-4">
           <div>&copy; {new Date().getFullYear()} LocalMarket. Tous droits réservés.</div>
+          <div className="flex items-center gap-1 text-slate-500">
+            Fait avec <Heart className="h-3.5 w-3.5 fill-red-500 text-red-500 mx-1" /> pour les échanges locaux
+          </div>
         </div>
       </footer>
     </div>

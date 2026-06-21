@@ -521,6 +521,21 @@ paths:
         "401":
           description: Unauthorized
 
+  /plans:
+    get:
+      operationId: listPlans
+      tags: [admin]
+      summary: List active plans (public)
+      responses:
+        "200":
+          description: Active plans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Plan"
+
   /admin/plans:
     get:
       operationId: adminListPlans

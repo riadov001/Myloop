@@ -35,6 +35,17 @@ function serializePlan(p: typeof plansTable.$inferSelect) {
   };
 }
 
+// GET /plans (public — active only)
+router.get("/plans", async (req, res) => {
+  try {
+    const plans = await db.select().from(plansTable).orderBy(plansTable.sortOrder);
+    res.json(plans.filter(p => p.isActive).map(serializePlan));
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Erreur lors de la récupération des plans" });
+  }
+});
+
 // GET /admin/plans
 router.get("/admin/plans", adminAuth, async (req, res) => {
   try {

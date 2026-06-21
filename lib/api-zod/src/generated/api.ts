@@ -451,6 +451,24 @@ export const GetMeResponse = zod.object({
 
 
 /**
+ * @summary List active plans (public)
+ */
+export const ListPlansResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "slug": zod.string(),
+  "description": zod.string().nullish(),
+  "priceMonthly": zod.string(),
+  "priceAnnual": zod.string().nullish(),
+  "maxAds": zod.number().nullish(),
+  "features": zod.array(zod.string()),
+  "isActive": zod.boolean(),
+  "sortOrder": zod.number()
+})
+export const ListPlansResponse = zod.array(ListPlansResponseItem)
+
+
+/**
  * @summary Admin - list all plans
  */
 export const AdminListPlansResponseItem = zod.object({

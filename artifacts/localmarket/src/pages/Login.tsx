@@ -24,6 +24,7 @@ export default function Login() {
         onSuccess: (data) => {
           localStorage.setItem("userToken", data.token);
           localStorage.setItem("userName", data.user.name);
+          window.dispatchEvent(new Event("auth-change"));
           toast({ title: "Connexion réussie", description: `Bienvenue, ${data.user.name} !` });
           setLocation("/");
         },

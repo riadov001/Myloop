@@ -12,6 +12,8 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import { Legal, CGU, Privacy } from "@/pages/Legal";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
+import Tarifs from "@/pages/Tarifs";
+import Dons from "@/pages/Dons";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +28,8 @@ function Router() {
       <Route path="/admin/dashboard" component={AdminDashboard} />
       <Route path="/connexion" component={Login} />
       <Route path="/inscription" component={Register} />
+      <Route path="/tarifs" component={Tarifs} />
+      <Route path="/dons" component={Dons} />
       <Route path="/mentions-legales" component={Legal} />
       <Route path="/cgu" component={CGU} />
       <Route path="/politique-confidentialite" component={Privacy} />
