@@ -29,6 +29,8 @@ const formSchema = z.object({
   price: z.string().optional(),
   isPromoted: z.boolean().default(false),
   promotionDuration: z.number().optional(),
+  subscriptionType: z.enum(["none", "weekly", "monthly", "annual"]).default("none"),
+  subscriptionPrice: z.string().optional(),
   contactPhone: z.string().optional(),
   contactEmail: z.string().email("Email invalide").optional().or(z.literal('')),
 });
@@ -60,6 +62,8 @@ export default function PostAd() {
       price: "",
       isPromoted: false,
       promotionDuration: undefined,
+      subscriptionType: "none",
+      subscriptionPrice: "",
       contactPhone: "",
       contactEmail: "",
     },
@@ -67,6 +71,7 @@ export default function PostAd() {
 
   const listingType = form.watch("listingType");
   const isPromoted = form.watch("isPromoted");
+  const subscriptionType = form.watch("subscriptionType");
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     const selectedPromoPrice = promotionPrices?.find(p => p.duration === values.promotionDuration);
@@ -78,6 +83,8 @@ export default function PostAd() {
           isPromoted: values.isPromoted,
           promotionDuration: values.isPromoted ? values.promotionDuration : undefined,
           promotionPrice: values.isPromoted && selectedPromoPrice ? selectedPromoPrice.price : undefined,
+          subscriptionType: values.subscriptionType || "none",
+          subscriptionPrice: values.subscriptionType !== "none" ? values.subscriptionPrice || undefined : undefined,
         }
       },
       {
@@ -402,6 +409,73 @@ export default function PostAd() {
                                 </div>
                               ))}
                             </RadioGroup>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
+
+                {/* Section Abonnement */}
+                <div className="space-y-6 pt-6 border-t border-border">
+                  <div>
+                    <h3 className="text-lg font-semibold">Abonnement</h3>
+                    <p className="text-sm text-muted-foreground mt-1">Proposez votre produit en livraison régulière (panier hebdomadaire, mensuel, etc.).</p>
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="subscriptionType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Type d'abonnement</FormLabel>
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            className="grid grid-cols-2 md:grid-cols-4 gap-3"
+                          >
+                            {[
+                              { value: "none", label: "Aucun", sub: "Pas d'abonnement" },
+                              { value: "weekly", label: "Hebdomadaire", sub: "Chaque semaine" },
+                              { value: "monthly", label: "Mensuel", sub: "Chaque mois" },
+                              { value: "annual", label: "Annuel", sub: "Chaque année" },
+                            ].map((opt) => (
+                              <div key={opt.value}>
+                                <RadioGroupItem value={opt.value} id={`sub-${opt.value}`} className="peer sr-only" />
+                                <Label
+                                  htmlFor={`sub-${opt.value}`}
+                                  className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary cursor-pointer text-center"
+                                >
+                                  <span className="text-sm font-semibold">{opt.label}</span>
+                                  <span className="text-xs text-muted-foreground mt-0.5">{opt.sub}</span>
+                                </Label>
+                              </div>
+                            ))}
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {subscriptionType !== "none" && (
+                    <FormField
+                      control={form.control}
+                      name="subscriptionPrice"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tarif de l'abonnement (€)</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Ex: 25.00"
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              className="h-12"
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

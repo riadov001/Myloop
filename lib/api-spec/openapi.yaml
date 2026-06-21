@@ -583,6 +583,11 @@ components:
           type: ["integer", "null"]
         promotionPrice:
           type: ["string", "null"]
+        subscriptionType:
+          type: string
+          enum: [none, weekly, monthly, annual]
+        subscriptionPrice:
+          type: ["string", "null"]
         contactPhone:
           type: ["string", "null"]
         contactEmail:
@@ -621,6 +626,11 @@ components:
         promotionDuration:
           type: integer
         promotionPrice:
+          type: string
+        subscriptionType:
+          type: string
+          enum: [none, weekly, monthly, annual]
+        subscriptionPrice:
           type: string
         contactPhone:
           type: string

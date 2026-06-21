@@ -18,6 +18,16 @@ export const AdListingType = {
   fixed: 'fixed',
 } as const;
 
+export type AdSubscriptionType = typeof AdSubscriptionType[keyof typeof AdSubscriptionType];
+
+
+export const AdSubscriptionType = {
+  none: 'none',
+  weekly: 'weekly',
+  monthly: 'monthly',
+  annual: 'annual',
+} as const;
+
 export type AdStatus = typeof AdStatus[keyof typeof AdStatus];
 
 
@@ -47,6 +57,9 @@ export interface Ad {
   promotionDuration?: number | null;
   /** @nullable */
   promotionPrice?: string | null;
+  subscriptionType?: AdSubscriptionType;
+  /** @nullable */
+  subscriptionPrice?: string | null;
   /** @nullable */
   contactPhone?: string | null;
   /** @nullable */
@@ -64,6 +77,16 @@ export const AdInputListingType = {
   fixed: 'fixed',
 } as const;
 
+export type AdInputSubscriptionType = typeof AdInputSubscriptionType[keyof typeof AdInputSubscriptionType];
+
+
+export const AdInputSubscriptionType = {
+  none: 'none',
+  weekly: 'weekly',
+  monthly: 'monthly',
+  annual: 'annual',
+} as const;
+
 export interface AdInput {
   title: string;
   description?: string;
@@ -77,6 +100,8 @@ export interface AdInput {
   isPromoted?: boolean;
   promotionDuration?: number;
   promotionPrice?: string;
+  subscriptionType?: AdInputSubscriptionType;
+  subscriptionPrice?: string;
   contactPhone?: string;
   contactEmail?: string;
 }

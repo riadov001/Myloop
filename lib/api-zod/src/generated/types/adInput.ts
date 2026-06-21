@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AdInputListingType } from './adInputListingType';
+import type { AdInputSubscriptionType } from './adInputSubscriptionType';
 
 export interface AdInput {
   title: string;
@@ -20,6 +21,8 @@ export interface AdInput {
   isPromoted?: boolean;
   promotionDuration?: number;
   promotionPrice?: string;
+  subscriptionType?: AdInputSubscriptionType;
+  subscriptionPrice?: string;
   contactPhone?: string;
   contactEmail?: string;
 }

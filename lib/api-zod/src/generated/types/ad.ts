@@ -7,6 +7,7 @@
  */
 import type { AdListingType } from './adListingType';
 import type { AdStatus } from './adStatus';
+import type { AdSubscriptionType } from './adSubscriptionType';
 
 export interface Ad {
   id: number;
@@ -28,6 +29,9 @@ export interface Ad {
   promotionDuration?: number | null;
   /** @nullable */
   promotionPrice?: string | null;
+  subscriptionType?: AdSubscriptionType;
+  /** @nullable */
+  subscriptionPrice?: string | null;
   /** @nullable */
   contactPhone?: string | null;
   /** @nullable */
