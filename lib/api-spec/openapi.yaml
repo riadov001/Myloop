@@ -521,6 +521,116 @@ paths:
         "401":
           description: Unauthorized
 
+  /admin/plans:
+    get:
+      operationId: adminListPlans
+      tags: [admin]
+      summary: Admin - list all plans
+      responses:
+        "200":
+          description: All plans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Plan"
+    post:
+      operationId: adminCreatePlan
+      tags: [admin]
+      summary: Admin - create plan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlanInput"
+      responses:
+        "201":
+          description: Created plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Plan"
+
+  /admin/plans/{id}:
+    put:
+      operationId: adminUpdatePlan
+      tags: [admin]
+      summary: Admin - update plan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlanInput"
+      responses:
+        "200":
+          description: Updated plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Plan"
+    delete:
+      operationId: adminDeletePlan
+      tags: [admin]
+      summary: Admin - delete plan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /admin/config:
+    get:
+      operationId: adminListConfig
+      tags: [admin]
+      summary: Admin - list all platform config (secrets masked)
+      responses:
+        "200":
+          description: All config entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlatformConfig"
+
+  /admin/config/{key}:
+    put:
+      operationId: adminUpdateConfig
+      tags: [admin]
+      summary: Admin - set a platform config value
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlatformConfigInput"
+      responses:
+        "200":
+          description: Updated config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformConfig"
+
   /admin/login:
     post:
       operationId: adminLogin
@@ -747,6 +857,80 @@ components:
           type: string
         active:
           type: boolean
+
+    Plan:
+      type: object
+      required: [id, name, slug, priceMonthly, features, isActive, sortOrder]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: ["string", "null"]
+        priceMonthly:
+          type: string
+        priceAnnual:
+          type: ["string", "null"]
+        maxAds:
+          type: ["integer", "null"]
+        features:
+          type: array
+          items:
+            type: string
+        isActive:
+          type: boolean
+        sortOrder:
+          type: integer
+
+    PlanInput:
+      type: object
+      required: [name, slug, priceMonthly, features]
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        priceMonthly:
+          type: string
+        priceAnnual:
+          type: string
+        maxAds:
+          type: integer
+        features:
+          type: array
+          items:
+            type: string
+        isActive:
+          type: boolean
+        sortOrder:
+          type: integer
+
+    PlatformConfig:
+      type: object
+      required: [key, isSecret, label]
+      properties:
+        key:
+          type: string
+        value:
+          type: ["string", "null"]
+        isSecret:
+          type: boolean
+        label:
+          type: string
+        description:
+          type: ["string", "null"]
+
+    PlatformConfigInput:
+      type: object
+      required: [value]
+      properties:
+        value:
+          type: string
 
     AdminCredentials:
       type: object

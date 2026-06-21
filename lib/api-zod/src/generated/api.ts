@@ -451,6 +451,114 @@ export const GetMeResponse = zod.object({
 
 
 /**
+ * @summary Admin - list all plans
+ */
+export const AdminListPlansResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "slug": zod.string(),
+  "description": zod.string().nullish(),
+  "priceMonthly": zod.string(),
+  "priceAnnual": zod.string().nullish(),
+  "maxAds": zod.number().nullish(),
+  "features": zod.array(zod.string()),
+  "isActive": zod.boolean(),
+  "sortOrder": zod.number()
+})
+export const AdminListPlansResponse = zod.array(AdminListPlansResponseItem)
+
+
+/**
+ * @summary Admin - create plan
+ */
+export const AdminCreatePlanBody = zod.object({
+  "name": zod.string(),
+  "slug": zod.string(),
+  "description": zod.string().optional(),
+  "priceMonthly": zod.string(),
+  "priceAnnual": zod.string().optional(),
+  "maxAds": zod.number().optional(),
+  "features": zod.array(zod.string()),
+  "isActive": zod.boolean().optional(),
+  "sortOrder": zod.number().optional()
+})
+
+
+/**
+ * @summary Admin - update plan
+ */
+export const AdminUpdatePlanParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const AdminUpdatePlanBody = zod.object({
+  "name": zod.string(),
+  "slug": zod.string(),
+  "description": zod.string().optional(),
+  "priceMonthly": zod.string(),
+  "priceAnnual": zod.string().optional(),
+  "maxAds": zod.number().optional(),
+  "features": zod.array(zod.string()),
+  "isActive": zod.boolean().optional(),
+  "sortOrder": zod.number().optional()
+})
+
+export const AdminUpdatePlanResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "slug": zod.string(),
+  "description": zod.string().nullish(),
+  "priceMonthly": zod.string(),
+  "priceAnnual": zod.string().nullish(),
+  "maxAds": zod.number().nullish(),
+  "features": zod.array(zod.string()),
+  "isActive": zod.boolean(),
+  "sortOrder": zod.number()
+})
+
+
+/**
+ * @summary Admin - delete plan
+ */
+export const AdminDeletePlanParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary Admin - list all platform config (secrets masked)
+ */
+export const AdminListConfigResponseItem = zod.object({
+  "key": zod.string(),
+  "value": zod.string().nullish(),
+  "isSecret": zod.boolean(),
+  "label": zod.string(),
+  "description": zod.string().nullish()
+})
+export const AdminListConfigResponse = zod.array(AdminListConfigResponseItem)
+
+
+/**
+ * @summary Admin - set a platform config value
+ */
+export const AdminUpdateConfigParams = zod.object({
+  "key": zod.coerce.string()
+})
+
+export const AdminUpdateConfigBody = zod.object({
+  "value": zod.string()
+})
+
+export const AdminUpdateConfigResponse = zod.object({
+  "key": zod.string(),
+  "value": zod.string().nullish(),
+  "isSecret": zod.boolean(),
+  "label": zod.string(),
+  "description": zod.string().nullish()
+})
+
+
+/**
  * @summary Admin login
  */
 export const AdminLoginBody = zod.object({

@@ -8,6 +8,8 @@ import authRouter from "./auth";
 import categoriesRouter from "./categories";
 import unitsRouter from "./units";
 import promotionPricesRouter from "./promotion-prices";
+import plansRouter from "./plans";
+import platformConfigRouter from "./platform-config";
 
 const router: IRouter = Router();
 
@@ -20,5 +22,7 @@ router.use(authRouter);
 router.use(categoriesRouter);
 router.use(unitsRouter);
 router.use(promotionPricesRouter);
+router.use(plansRouter);
+router.use(platformConfigRouter);
 
 export default router;

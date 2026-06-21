@@ -176,6 +176,48 @@ export interface PromotionPriceInput {
   active?: boolean;
 }
 
+export interface Plan {
+  id: number;
+  name: string;
+  slug: string;
+  /** @nullable */
+  description?: string | null;
+  priceMonthly: string;
+  /** @nullable */
+  priceAnnual?: string | null;
+  /** @nullable */
+  maxAds?: number | null;
+  features: string[];
+  isActive: boolean;
+  sortOrder: number;
+}
+
+export interface PlanInput {
+  name: string;
+  slug: string;
+  description?: string;
+  priceMonthly: string;
+  priceAnnual?: string;
+  maxAds?: number;
+  features: string[];
+  isActive?: boolean;
+  sortOrder?: number;
+}
+
+export interface PlatformConfig {
+  key: string;
+  /** @nullable */
+  value?: string | null;
+  isSecret: boolean;
+  label: string;
+  /** @nullable */
+  description?: string | null;
+}
+
+export interface PlatformConfigInput {
+  value: string;
+}
+
 export interface AdminCredentials {
   email: string;
   password: string;

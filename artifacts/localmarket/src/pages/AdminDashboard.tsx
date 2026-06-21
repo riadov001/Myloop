@@ -16,9 +16,11 @@ import {
   useAdminListCategories, useAdminCreateCategory, useAdminUpdateCategory, useAdminDeleteCategory,
   useAdminListUnits, useAdminCreateUnit, useAdminUpdateUnit, useAdminDeleteUnit,
   useAdminListPromotionPrices, useAdminCreatePromotionPrice, useAdminUpdatePromotionPrice, useAdminDeletePromotionPrice,
+  useAdminListPlans, useAdminCreatePlan, useAdminUpdatePlan, useAdminDeletePlan,
+  useAdminListConfig, useAdminUpdateConfig,
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, XCircle, Trash2, Eye, Paintbrush, Loader2, Plus, Pencil } from "lucide-react";
+import { CheckCircle2, XCircle, Trash2, Eye, EyeOff, Paintbrush, Loader2, Plus, Pencil, Settings2, Star } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -47,11 +49,12 @@ export default function AdminDashboard() {
         </div>
 
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="flex w-full max-w-2xl gap-0">
+          <TabsList className="flex w-full flex-wrap gap-0">
             <TabsTrigger value="annonces" className="flex-1">Annonces</TabsTrigger>
             <TabsTrigger value="categories" className="flex-1">Catégories</TabsTrigger>
             <TabsTrigger value="unites" className="flex-1">Unités</TabsTrigger>
             <TabsTrigger value="tarifs" className="flex-1">Tarifs</TabsTrigger>
+            <TabsTrigger value="plans" className="flex-1">Plans</TabsTrigger>
             <TabsTrigger value="branding" className="flex-1">Branding</TabsTrigger>
             <TabsTrigger value="settings" className="flex-1">Paramètres</TabsTrigger>
           </TabsList>
@@ -60,26 +63,9 @@ export default function AdminDashboard() {
           <TabsContent value="categories" className="mt-6"><CategoriesTab /></TabsContent>
           <TabsContent value="unites" className="mt-6"><UnitesTab /></TabsContent>
           <TabsContent value="tarifs" className="mt-6"><TarifsTab /></TabsContent>
+          <TabsContent value="plans" className="mt-6"><PlansTab /></TabsContent>
           <TabsContent value="branding" className="mt-6"><BrandingTab /></TabsContent>
-          <TabsContent value="settings" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Paramètres généraux</CardTitle>
-                <CardDescription>Gérez les paramètres globaux de la plateforme.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label>Email de contact principal</Label>
-                  <Input defaultValue="contact@localmarket.fr" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Réseaux sociaux</Label>
-                  <Input placeholder="URL Facebook" defaultValue="https://facebook.com/localmarket" />
-                </div>
-                <Button>Sauvegarder les paramètres</Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
+          <TabsContent value="settings" className="mt-6"><ParametresTab /></TabsContent>
         </Tabs>
       </div>
     </AdminLayout>
@@ -652,6 +638,356 @@ function TarifsTab() {
         </Table>
       </CardContent>
     </Card>
+  );
+}
+
+function PlansTab() {
+  const { toast } = useToast();
+  const { data: plans, isLoading, refetch } = useAdminListPlans();
+  const createPlan = useAdminCreatePlan();
+  const updatePlan = useAdminUpdatePlan();
+  const deletePlan = useAdminDeletePlan();
+
+  const emptyForm = { name: "", slug: "", description: "", priceMonthly: "0", priceAnnual: "", maxAds: "", featuresText: "", isActive: true, sortOrder: "0" };
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState(emptyForm);
+  const [editingId, setEditingId] = useState<number | null>(null);
+
+  const setField = (k: keyof typeof emptyForm, v: string | boolean) => setForm(f => ({ ...f, [k]: v }));
+
+  const toPayload = () => ({
+    name: form.name.trim(),
+    slug: form.slug.trim() || form.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+    description: form.description.trim() || undefined,
+    priceMonthly: form.priceMonthly || "0",
+    priceAnnual: form.priceAnnual.trim() || undefined,
+    maxAds: form.maxAds ? Number(form.maxAds) : undefined,
+    features: form.featuresText.split("\n").map(s => s.trim()).filter(Boolean),
+    isActive: form.isActive,
+    sortOrder: Number(form.sortOrder) || 0,
+  });
+
+  const handleCreate = () => {
+    if (!form.name.trim()) return;
+    createPlan.mutate(
+      { data: toPayload() },
+      {
+        onSuccess: () => { toast({ title: "Plan créé." }); setForm(emptyForm); setShowForm(false); refetch(); },
+        onError: () => toast({ title: "Erreur", variant: "destructive" }),
+      }
+    );
+  };
+
+  const startEdit = (p: NonNullable<typeof plans>[number]) => {
+    setEditingId(p.id);
+    setForm({
+      name: p.name,
+      slug: p.slug,
+      description: p.description ?? "",
+      priceMonthly: p.priceMonthly,
+      priceAnnual: p.priceAnnual ?? "",
+      maxAds: p.maxAds != null ? String(p.maxAds) : "",
+      featuresText: (p.features as string[]).join("\n"),
+      isActive: p.isActive,
+      sortOrder: String(p.sortOrder),
+    });
+    setShowForm(true);
+  };
+
+  const handleUpdate = () => {
+    if (!editingId) return;
+    updatePlan.mutate(
+      { id: editingId, data: toPayload() },
+      {
+        onSuccess: () => { toast({ title: "Plan mis à jour." }); setEditingId(null); setForm(emptyForm); setShowForm(false); refetch(); },
+        onError: () => toast({ title: "Erreur", variant: "destructive" }),
+      }
+    );
+  };
+
+  const handleDelete = (id: number) => {
+    if (!confirm("Supprimer ce plan ?")) return;
+    deletePlan.mutate(
+      { id },
+      {
+        onSuccess: () => { toast({ title: "Plan supprimé." }); refetch(); },
+        onError: () => toast({ title: "Erreur", variant: "destructive" }),
+      }
+    );
+  };
+
+  const cancel = () => { setEditingId(null); setForm(emptyForm); setShowForm(false); };
+
+  return (
+    <div className="space-y-6">
+      <Card className="border-primary/10 shadow-md">
+        <CardHeader className="bg-muted/30 border-b pb-4 flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Gestion des plans</CardTitle>
+            <CardDescription>Créez et gérez les offres d'abonnement de la plateforme (Economy, Max, etc.).</CardDescription>
+          </div>
+          <Button onClick={() => { cancel(); setShowForm(true); }}>
+            <Plus className="h-4 w-4 mr-1" /> Nouveau plan
+          </Button>
+        </CardHeader>
+        <CardContent className="pt-6">
+          {showForm && (
+            <div className="mb-6 p-5 border rounded-lg bg-muted/20 space-y-4">
+              <h3 className="font-semibold text-base">{editingId ? "Modifier le plan" : "Créer un plan"}</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label>Nom du plan *</Label>
+                  <Input placeholder="ex: Max" value={form.name} onChange={e => setField("name", e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Slug (auto)</Label>
+                  <Input placeholder="ex: max" value={form.slug} onChange={e => setField("slug", e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Prix mensuel (€) *</Label>
+                  <Input type="number" step="0.01" placeholder="0" value={form.priceMonthly} onChange={e => setField("priceMonthly", e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Prix annuel (€)</Label>
+                  <Input type="number" step="0.01" placeholder="Optionnel" value={form.priceAnnual} onChange={e => setField("priceAnnual", e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Limite d'annonces</Label>
+                  <Input type="number" placeholder="Illimité si vide" value={form.maxAds} onChange={e => setField("maxAds", e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Ordre d'affichage</Label>
+                  <Input type="number" value={form.sortOrder} onChange={e => setField("sortOrder", e.target.value)} />
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <Label>Description</Label>
+                  <Input placeholder="Brève description du plan" value={form.description} onChange={e => setField("description", e.target.value)} />
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <Label>Fonctionnalités incluses <span className="text-muted-foreground text-xs">(une par ligne)</span></Label>
+                  <textarea
+                    className="w-full min-h-[100px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    placeholder={"Annonces illimitées\nMise en avant prioritaire\nSupport prioritaire"}
+                    value={form.featuresText}
+                    onChange={e => setField("featuresText", e.target.value)}
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={form.isActive} onCheckedChange={v => setField("isActive", v)} />
+                  <Label>Plan actif</Label>
+                </div>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button onClick={editingId ? handleUpdate : handleCreate} disabled={createPlan.isPending || updatePlan.isPending}>
+                  {editingId ? "Enregistrer les modifications" : "Créer le plan"}
+                </Button>
+                <Button variant="ghost" onClick={cancel}>Annuler</Button>
+              </div>
+            </div>
+          )}
+
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Ordre</TableHead>
+                <TableHead>Nom</TableHead>
+                <TableHead>Prix mensuel</TableHead>
+                <TableHead>Prix annuel</TableHead>
+                <TableHead>Limite annonces</TableHead>
+                <TableHead>Fonctionnalités</TableHead>
+                <TableHead>Actif</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow><TableCell colSpan={8} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin inline" /></TableCell></TableRow>
+              ) : plans?.length ? plans.map(p => (
+                <TableRow key={p.id}>
+                  <TableCell className="text-muted-foreground text-sm">{p.sortOrder}</TableCell>
+                  <TableCell>
+                    <div className="font-semibold flex items-center gap-1">
+                      <Star className="h-3 w-3 text-amber-500" />
+                      {p.name}
+                    </div>
+                    {p.description && <div className="text-xs text-muted-foreground">{p.description}</div>}
+                  </TableCell>
+                  <TableCell className="font-semibold text-primary">{p.priceMonthly} €/mois</TableCell>
+                  <TableCell className="text-muted-foreground text-sm">{p.priceAnnual ? `${p.priceAnnual} €/an` : "—"}</TableCell>
+                  <TableCell className="text-sm">{p.maxAds != null ? `${p.maxAds} annonces` : "Illimité"}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1 max-w-[200px]">
+                      {(p.features as string[]).slice(0, 3).map((f, i) => (
+                        <Badge key={i} variant="secondary" className="text-[10px]">{f}</Badge>
+                      ))}
+                      {(p.features as string[]).length > 3 && (
+                        <Badge variant="outline" className="text-[10px]">+{(p.features as string[]).length - 3}</Badge>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Switch checked={p.isActive} onCheckedChange={() => {
+                      updatePlan.mutate({ id: p.id, data: { name: p.name, slug: p.slug, description: p.description ?? undefined, priceMonthly: p.priceMonthly, priceAnnual: p.priceAnnual ?? undefined, maxAds: p.maxAds ?? undefined, features: p.features as string[], isActive: !p.isActive, sortOrder: p.sortOrder } }, { onSuccess: () => refetch() });
+                    }} />
+                  </TableCell>
+                  <TableCell className="text-right space-x-2">
+                    <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => startEdit(p)}>
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button size="icon" variant="outline" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(p.id)}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              )) : (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
+                    Aucun plan configuré. Cliquez sur "Nouveau plan" pour commencer.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function ParametresTab() {
+  const { toast } = useToast();
+  const { data: configs, isLoading, refetch } = useAdminListConfig();
+  const updateConfig = useAdminUpdateConfig();
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [visible, setVisible] = useState<Record<string, boolean>>({});
+  const [saving, setSaving] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (configs) {
+      const initial: Record<string, string> = {};
+      configs.forEach(c => { initial[c.key] = c.value ?? ""; });
+      setValues(initial);
+    }
+  }, [configs]);
+
+  const handleSave = (key: string, isSecret: boolean) => {
+    setSaving(s => ({ ...s, [key]: true }));
+    updateConfig.mutate(
+      { key, data: { value: values[key] ?? "" } },
+      {
+        onSuccess: () => {
+          toast({ title: "Configuration sauvegardée." });
+          refetch();
+        },
+        onError: () => toast({ title: "Erreur lors de la sauvegarde", variant: "destructive" }),
+        onSettled: () => setSaving(s => ({ ...s, [key]: false })),
+      }
+    );
+    void isSecret;
+  };
+
+  const secretConfigs = configs?.filter(c => c.isSecret) ?? [];
+  const publicConfigs = configs?.filter(c => !c.isSecret) ?? [];
+
+  if (isLoading) {
+    return <div className="flex items-center gap-2 text-muted-foreground py-10"><Loader2 className="h-5 w-5 animate-spin" /> Chargement...</div>;
+  }
+
+  const renderConfigRow = (c: NonNullable<typeof configs>[number]) => {
+    const isSecret = c.isSecret;
+    const showClear = isSecret && visible[c.key];
+    return (
+      <div key={c.key} className="space-y-2 p-4 border rounded-lg bg-card">
+        <div className="flex items-start justify-between">
+          <div>
+            <Label className="text-sm font-semibold">{c.label}</Label>
+            {c.description && <p className="text-xs text-muted-foreground mt-0.5">{c.description}</p>}
+          </div>
+          {isSecret && (
+            <Badge variant="outline" className="text-[10px] text-amber-700 border-amber-300 bg-amber-50">
+              Secret
+            </Badge>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Input
+              type={isSecret && !visible[c.key] ? "password" : "text"}
+              value={values[c.key] ?? ""}
+              onChange={e => setValues(v => ({ ...v, [c.key]: e.target.value }))}
+              placeholder={isSecret ? "Saisir pour définir ou remplacer la clé" : ""}
+              className="pr-10 font-mono text-sm"
+            />
+            {isSecret && (
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => setVisible(v => ({ ...v, [c.key]: !v[c.key] }))}
+                tabIndex={-1}
+                title={showClear ? "Masquer" : "Afficher"}
+              >
+                {showClear ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            )}
+          </div>
+          <Button
+            size="sm"
+            onClick={() => handleSave(c.key, isSecret)}
+            disabled={saving[c.key]}
+            className="shrink-0"
+          >
+            {saving[c.key] ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sauvegarder"}
+          </Button>
+        </div>
+        {isSecret && c.value && (
+          <p className="text-xs text-green-600 flex items-center gap-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-green-500 inline-block" />
+            Clé configurée — laissez vide ou saisissez une nouvelle valeur pour remplacer
+          </p>
+        )}
+        {isSecret && !c.value && (
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-gray-400 inline-block" />
+            Non configuré
+          </p>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-8">
+      <Card className="border-primary/10 shadow-md">
+        <CardHeader className="bg-muted/30 border-b pb-4">
+          <div className="flex items-center gap-2">
+            <Settings2 className="h-5 w-5 text-primary" />
+            <CardTitle>Clés API et intégrations</CardTitle>
+          </div>
+          <CardDescription>
+            Les clés secrètes sont masquées et ne sont jamais affichées en clair. Saisissez une nouvelle valeur pour remplacer une clé existante.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6 space-y-4">
+          {secretConfigs.length === 0 && !isLoading && (
+            <p className="text-muted-foreground text-sm">Aucune clé secrète configurée.</p>
+          )}
+          {secretConfigs.map(renderConfigRow)}
+        </CardContent>
+      </Card>
+
+      <Card className="border-primary/10 shadow-md">
+        <CardHeader className="bg-muted/30 border-b pb-4">
+          <CardTitle>Paramètres généraux</CardTitle>
+          <CardDescription>Configurez les paramètres publics de la plateforme.</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6 space-y-4">
+          {publicConfigs.length === 0 && !isLoading && (
+            <p className="text-muted-foreground text-sm">Aucun paramètre à configurer.</p>
+          )}
+          {publicConfigs.map(renderConfigRow)}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 

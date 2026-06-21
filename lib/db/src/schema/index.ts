@@ -4,3 +4,5 @@ export * from "./users";
 export * from "./categories";
 export * from "./units";
 export * from "./promotion-prices";
+export * from "./plans";
+export * from "./platform-config";
