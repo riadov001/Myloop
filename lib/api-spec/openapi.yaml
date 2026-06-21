@@ -17,6 +17,10 @@ tags:
     description: Statistics
   - name: auth
     description: User authentication
+  - name: categories
+    description: Categories
+  - name: units
+    description: Units of measure
 paths:
   /healthz:
     get:
@@ -50,6 +54,14 @@ paths:
           schema:
             type: string
         - name: quantity
+          in: query
+          schema:
+            type: string
+        - name: unit
+          in: query
+          schema:
+            type: string
+        - name: listingType
           in: query
           schema:
             type: string
@@ -119,6 +131,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Stats"
+
+  /categories:
+    get:
+      operationId: listCategories
+      tags: [categories]
+      summary: List active categories
+      responses:
+        "200":
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+
+  /units:
+    get:
+      operationId: listUnits
+      tags: [units]
+      summary: List active units
+      responses:
+        "200":
+          description: List of units
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Unit"
 
   /admin/ads:
     get:
@@ -209,6 +251,216 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Branding"
+
+  /admin/categories:
+    get:
+      operationId: adminListCategories
+      tags: [admin]
+      summary: Admin - list all categories
+      responses:
+        "200":
+          description: All categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+    post:
+      operationId: adminCreateCategory
+      tags: [admin]
+      summary: Admin - create category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryInput"
+      responses:
+        "201":
+          description: Created category
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+
+  /admin/categories/{id}:
+    put:
+      operationId: adminUpdateCategory
+      tags: [admin]
+      summary: Admin - update category
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryInput"
+      responses:
+        "200":
+          description: Updated category
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+    delete:
+      operationId: adminDeleteCategory
+      tags: [admin]
+      summary: Admin - delete category
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /admin/units:
+    get:
+      operationId: adminListUnits
+      tags: [admin]
+      summary: Admin - list all units
+      responses:
+        "200":
+          description: All units
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Unit"
+    post:
+      operationId: adminCreateUnit
+      tags: [admin]
+      summary: Admin - create unit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UnitInput"
+      responses:
+        "201":
+          description: Created unit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Unit"
+
+  /admin/units/{id}:
+    put:
+      operationId: adminUpdateUnit
+      tags: [admin]
+      summary: Admin - update unit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UnitInput"
+      responses:
+        "200":
+          description: Updated unit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Unit"
+    delete:
+      operationId: adminDeleteUnit
+      tags: [admin]
+      summary: Admin - delete unit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /admin/promotion-prices:
+    get:
+      operationId: adminListPromotionPrices
+      tags: [admin]
+      summary: Admin - list promotion prices
+      responses:
+        "200":
+          description: All promotion prices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PromotionPrice"
+    post:
+      operationId: adminCreatePromotionPrice
+      tags: [admin]
+      summary: Admin - create promotion price
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromotionPriceInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromotionPrice"
+
+  /admin/promotion-prices/{id}:
+    put:
+      operationId: adminUpdatePromotionPrice
+      tags: [admin]
+      summary: Admin - update promotion price
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromotionPriceInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromotionPrice"
+    delete:
+      operationId: adminDeletePromotionPrice
+      tags: [admin]
+      summary: Admin - delete promotion price
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
 
   /auth/register:
     post:
@@ -316,8 +568,21 @@ components:
           type: string
         quantity:
           type: ["string", "null"]
+        unit:
+          type: ["string", "null"]
         category:
           type: string
+        listingType:
+          type: string
+          enum: [free, flexible, fixed]
+        price:
+          type: ["string", "null"]
+        isPromoted:
+          type: boolean
+        promotionDuration:
+          type: ["integer", "null"]
+        promotionPrice:
+          type: ["string", "null"]
         contactPhone:
           type: ["string", "null"]
         contactEmail:
@@ -342,7 +607,20 @@ components:
           type: string
         quantity:
           type: string
+        unit:
+          type: string
         category:
+          type: string
+        listingType:
+          type: string
+          enum: [free, flexible, fixed]
+        price:
+          type: string
+        isPromoted:
+          type: boolean
+        promotionDuration:
+          type: integer
+        promotionPrice:
           type: string
         contactPhone:
           type: string
@@ -383,6 +661,82 @@ components:
           type: string
         siteName:
           type: string
+
+    Category:
+      type: object
+      required: [id, name, slug, active]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        active:
+          type: boolean
+
+    CategoryInput:
+      type: object
+      required: [name, slug]
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        active:
+          type: boolean
+
+    Unit:
+      type: object
+      required: [id, name, symbol, active]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        symbol:
+          type: string
+        active:
+          type: boolean
+
+    UnitInput:
+      type: object
+      required: [name, symbol]
+      properties:
+        name:
+          type: string
+        symbol:
+          type: string
+        active:
+          type: boolean
+
+    PromotionPrice:
+      type: object
+      required: [id, duration, label, price, active]
+      properties:
+        id:
+          type: integer
+        duration:
+          type: integer
+        label:
+          type: string
+        price:
+          type: string
+        active:
+          type: boolean
+
+    PromotionPriceInput:
+      type: object
+      required: [duration, label, price]
+      properties:
+        duration:
+          type: integer
+        label:
+          type: string
+        price:
+          type: string
+        active:
+          type: boolean
 
     AdminCredentials:
       type: object

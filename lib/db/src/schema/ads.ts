@@ -1,8 +1,9 @@
-import { pgTable, serial, text, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, pgEnum, boolean, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
 export const adStatusEnum = pgEnum("ad_status", ["pending", "published", "rejected"]);
+export const listingTypeEnum = pgEnum("listing_type", ["free", "flexible", "fixed"]);
 
 export const adsTable = pgTable("ads", {
   id: serial("id").primaryKey(),
@@ -11,7 +12,13 @@ export const adsTable = pgTable("ads", {
   location: text("location").notNull(),
   product: text("product").notNull(),
   quantity: text("quantity"),
+  unit: text("unit"),
   category: text("category").notNull(),
+  listingType: listingTypeEnum("listing_type").notNull().default("flexible"),
+  price: text("price"),
+  isPromoted: boolean("is_promoted").notNull().default(false),
+  promotionDuration: integer("promotion_duration"),
+  promotionPrice: text("promotion_price"),
   contactPhone: text("contact_phone"),
   contactEmail: text("contact_email"),
   status: adStatusEnum("status").notNull().default("pending"),

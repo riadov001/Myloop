@@ -9,9 +9,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useAdminListAds, useUpdateAdStatus, useDeleteAd, useGetBranding, useUpdateBranding } from "@workspace/api-client-react";
+import { Switch } from "@/components/ui/switch";
+import {
+  useAdminListAds, useUpdateAdStatus, useDeleteAd,
+  useGetBranding, useUpdateBranding,
+  useAdminListCategories, useAdminCreateCategory, useAdminUpdateCategory, useAdminDeleteCategory,
+  useAdminListUnits, useAdminCreateUnit, useAdminUpdateUnit, useAdminDeleteUnit,
+  useAdminListPromotionPrices, useAdminCreatePromotionPrice, useAdminUpdatePromotionPrice, useAdminDeletePromotionPrice,
+} from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, XCircle, Trash2, Eye, Paintbrush, Loader2 } from "lucide-react";
+import { CheckCircle2, XCircle, Trash2, Eye, Paintbrush, Loader2, Plus, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -20,8 +27,6 @@ export default function AdminDashboard() {
   const searchString = useSearch();
   const params = new URLSearchParams(searchString);
   const activeTab = params.get("tab") || "annonces";
-  
-  const { toast } = useToast();
 
   useEffect(() => {
     if (!localStorage.getItem("adminToken")) {
@@ -42,27 +47,25 @@ export default function AdminDashboard() {
         </div>
 
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-3">
-            <TabsTrigger value="annonces">Annonces</TabsTrigger>
-            <TabsTrigger value="branding">Branding</TabsTrigger>
-            <TabsTrigger value="settings">Paramètres</TabsTrigger>
+          <TabsList className="flex w-full max-w-2xl gap-0">
+            <TabsTrigger value="annonces" className="flex-1">Annonces</TabsTrigger>
+            <TabsTrigger value="categories" className="flex-1">Catégories</TabsTrigger>
+            <TabsTrigger value="unites" className="flex-1">Unités</TabsTrigger>
+            <TabsTrigger value="tarifs" className="flex-1">Tarifs</TabsTrigger>
+            <TabsTrigger value="branding" className="flex-1">Branding</TabsTrigger>
+            <TabsTrigger value="settings" className="flex-1">Paramètres</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="annonces" className="mt-6">
-            <AnnoncesTab />
-          </TabsContent>
-
-          <TabsContent value="branding" className="mt-6">
-            <BrandingTab />
-          </TabsContent>
-
+          <TabsContent value="annonces" className="mt-6"><AnnoncesTab /></TabsContent>
+          <TabsContent value="categories" className="mt-6"><CategoriesTab /></TabsContent>
+          <TabsContent value="unites" className="mt-6"><UnitesTab /></TabsContent>
+          <TabsContent value="tarifs" className="mt-6"><TarifsTab /></TabsContent>
+          <TabsContent value="branding" className="mt-6"><BrandingTab /></TabsContent>
           <TabsContent value="settings" className="mt-6">
             <Card>
               <CardHeader>
                 <CardTitle>Paramètres généraux</CardTitle>
-                <CardDescription>
-                  Gérez les paramètres globaux de la plateforme. (Mock)
-                </CardDescription>
+                <CardDescription>Gérez les paramètres globaux de la plateforme.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
@@ -86,11 +89,11 @@ export default function AdminDashboard() {
 function AnnoncesTab() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const { toast } = useToast();
-  
-  const { data: ads, isLoading, refetch } = useAdminListAds({ 
-    status: statusFilter !== "all" ? statusFilter : undefined 
+
+  const { data: ads, isLoading, refetch } = useAdminListAds({
+    status: statusFilter !== "all" ? statusFilter : undefined
   });
-  
+
   const updateStatus = useUpdateAdStatus();
   const deleteAd = useDeleteAd();
 
@@ -112,10 +115,7 @@ function AnnoncesTab() {
       deleteAd.mutate(
         { id },
         {
-          onSuccess: () => {
-            toast({ title: "Annonce supprimée." });
-            refetch();
-          },
+          onSuccess: () => { toast({ title: "Annonce supprimée." }); refetch(); },
           onError: () => toast({ title: "Erreur", variant: "destructive" })
         }
       );
@@ -156,9 +156,10 @@ function AnnoncesTab() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[100px]">ID</TableHead>
+              <TableHead className="w-[80px]">ID</TableHead>
               <TableHead>Titre</TableHead>
               <TableHead>Catégorie</TableHead>
+              <TableHead>Type</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Statut</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -167,16 +168,23 @@ function AnnoncesTab() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-10 text-muted-foreground flex items-center justify-center">
-                  <Loader2 className="h-6 w-6 animate-spin mr-2" /> Chargement des annonces...
+                <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                  <Loader2 className="h-6 w-6 animate-spin inline mr-2" /> Chargement...
                 </TableCell>
               </TableRow>
             ) : ads?.length ? (
               ads.map((ad) => (
                 <TableRow key={ad.id}>
                   <TableCell className="font-mono text-xs">#{ad.id}</TableCell>
-                  <TableCell className="font-medium max-w-[200px] truncate" title={ad.title}>{ad.title}</TableCell>
+                  <TableCell className="font-medium max-w-[200px] truncate" title={ad.title}>
+                    {ad.isPromoted && <Badge className="mr-1 bg-amber-500 text-white text-[10px]">Sponsorisé</Badge>}
+                    {ad.title}
+                  </TableCell>
                   <TableCell><Badge variant="secondary" className="text-xs">{ad.category}</Badge></TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {ad.listingType === "free" ? "Don" : ad.listingType === "fixed" ? "Prix fixe" : "Prix libre"}
+                    {ad.price && ` — ${ad.price}€`}
+                  </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {format(new Date(ad.createdAt), "dd MMM yyyy", { locale: fr })}
                   </TableCell>
@@ -203,11 +211,443 @@ function AnnoncesTab() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
-                  Aucune annonce trouvée avec ce filtre.
+                <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                  Aucune annonce trouvée.
                 </TableCell>
               </TableRow>
             )}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
+function CategoriesTab() {
+  const { toast } = useToast();
+  const { data: categories, isLoading, refetch } = useAdminListCategories();
+  const createCategory = useAdminCreateCategory();
+  const updateCategory = useAdminUpdateCategory();
+  const deleteCategory = useAdminDeleteCategory();
+
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [newName, setNewName] = useState("");
+  const [newSlug, setNewSlug] = useState("");
+  const [editName, setEditName] = useState("");
+  const [editSlug, setEditSlug] = useState("");
+
+  const handleCreate = () => {
+    if (!newName.trim()) return;
+    const slug = newSlug.trim() || newName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    createCategory.mutate(
+      { data: { name: newName.trim(), slug, active: true } },
+      {
+        onSuccess: () => { toast({ title: "Catégorie créée." }); setNewName(""); setNewSlug(""); refetch(); },
+        onError: () => toast({ title: "Erreur", variant: "destructive" })
+      }
+    );
+  };
+
+  const handleUpdate = (id: number) => {
+    updateCategory.mutate(
+      { id, data: { name: editName, slug: editSlug, active: true } },
+      {
+        onSuccess: () => { toast({ title: "Catégorie mise à jour." }); setEditingId(null); refetch(); },
+        onError: () => toast({ title: "Erreur", variant: "destructive" })
+      }
+    );
+  };
+
+  const handleToggleActive = (cat: { id: number; name: string; slug: string; active: boolean }) => {
+    updateCategory.mutate(
+      { id: cat.id, data: { name: cat.name, slug: cat.slug, active: !cat.active } },
+      {
+        onSuccess: () => { refetch(); },
+        onError: () => toast({ title: "Erreur", variant: "destructive" })
+      }
+    );
+  };
+
+  const handleDelete = (id: number) => {
+    if (confirm("Supprimer cette catégorie ?")) {
+      deleteCategory.mutate(
+        { id },
+        {
+          onSuccess: () => { toast({ title: "Catégorie supprimée." }); refetch(); },
+          onError: () => toast({ title: "Erreur", variant: "destructive" })
+        }
+      );
+    }
+  };
+
+  return (
+    <Card className="border-primary/10 shadow-md">
+      <CardHeader className="bg-muted/30 border-b pb-4">
+        <CardTitle>Gestion des catégories</CardTitle>
+        <CardDescription>Créez, modifiez, activez ou désactivez les catégories d'annonces.</CardDescription>
+      </CardHeader>
+      <CardContent className="pt-6 space-y-6">
+        <div className="flex gap-3">
+          <Input
+            placeholder="Nom de la catégorie"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            className="flex-1"
+            onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+          />
+          <Input
+            placeholder="Slug (auto)"
+            value={newSlug}
+            onChange={(e) => setNewSlug(e.target.value)}
+            className="w-40"
+          />
+          <Button onClick={handleCreate} disabled={createCategory.isPending}>
+            <Plus className="h-4 w-4 mr-1" /> Ajouter
+          </Button>
+        </div>
+
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nom</TableHead>
+              <TableHead>Slug</TableHead>
+              <TableHead>Actif</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow><TableCell colSpan={4} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin inline" /></TableCell></TableRow>
+            ) : categories?.map((cat) => (
+              <TableRow key={cat.id}>
+                <TableCell>
+                  {editingId === cat.id ? (
+                    <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="h-8" />
+                  ) : cat.name}
+                </TableCell>
+                <TableCell className="text-muted-foreground text-sm">
+                  {editingId === cat.id ? (
+                    <Input value={editSlug} onChange={(e) => setEditSlug(e.target.value)} className="h-8" />
+                  ) : cat.slug}
+                </TableCell>
+                <TableCell>
+                  <Switch
+                    checked={cat.active}
+                    onCheckedChange={() => handleToggleActive(cat)}
+                  />
+                </TableCell>
+                <TableCell className="text-right space-x-2">
+                  {editingId === cat.id ? (
+                    <>
+                      <Button size="sm" onClick={() => handleUpdate(cat.id)} disabled={updateCategory.isPending}>Enregistrer</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>Annuler</Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => { setEditingId(cat.id); setEditName(cat.name); setEditSlug(cat.slug); }}>
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button size="icon" variant="outline" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(cat.id)}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
+function UnitesTab() {
+  const { toast } = useToast();
+  const { data: units, isLoading, refetch } = useAdminListUnits();
+  const createUnit = useAdminCreateUnit();
+  const updateUnit = useAdminUpdateUnit();
+  const deleteUnit = useAdminDeleteUnit();
+
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [newName, setNewName] = useState("");
+  const [newSymbol, setNewSymbol] = useState("");
+  const [editName, setEditName] = useState("");
+  const [editSymbol, setEditSymbol] = useState("");
+
+  const handleCreate = () => {
+    if (!newName.trim() || !newSymbol.trim()) return;
+    createUnit.mutate(
+      { data: { name: newName.trim(), symbol: newSymbol.trim(), active: true } },
+      {
+        onSuccess: () => { toast({ title: "Unité créée." }); setNewName(""); setNewSymbol(""); refetch(); },
+        onError: () => toast({ title: "Erreur", variant: "destructive" })
+      }
+    );
+  };
+
+  const handleUpdate = (id: number) => {
+    updateUnit.mutate(
+      { id, data: { name: editName, symbol: editSymbol, active: true } },
+      {
+        onSuccess: () => { toast({ title: "Unité mise à jour." }); setEditingId(null); refetch(); },
+        onError: () => toast({ title: "Erreur", variant: "destructive" })
+      }
+    );
+  };
+
+  const handleToggleActive = (unit: { id: number; name: string; symbol: string; active: boolean }) => {
+    updateUnit.mutate(
+      { id: unit.id, data: { name: unit.name, symbol: unit.symbol, active: !unit.active } },
+      {
+        onSuccess: () => { refetch(); },
+        onError: () => toast({ title: "Erreur", variant: "destructive" })
+      }
+    );
+  };
+
+  const handleDelete = (id: number) => {
+    if (confirm("Supprimer cette unité ?")) {
+      deleteUnit.mutate(
+        { id },
+        {
+          onSuccess: () => { toast({ title: "Unité supprimée." }); refetch(); },
+          onError: () => toast({ title: "Erreur", variant: "destructive" })
+        }
+      );
+    }
+  };
+
+  return (
+    <Card className="border-primary/10 shadow-md">
+      <CardHeader className="bg-muted/30 border-b pb-4">
+        <CardTitle>Gestion des unités de mesure</CardTitle>
+        <CardDescription>Gérez les unités disponibles dans les formulaires d'annonces.</CardDescription>
+      </CardHeader>
+      <CardContent className="pt-6 space-y-6">
+        <div className="flex gap-3">
+          <Input
+            placeholder="Nom (ex: Kilogramme)"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            className="flex-1"
+            onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+          />
+          <Input
+            placeholder="Symbole (ex: kg)"
+            value={newSymbol}
+            onChange={(e) => setNewSymbol(e.target.value)}
+            className="w-36"
+          />
+          <Button onClick={handleCreate} disabled={createUnit.isPending}>
+            <Plus className="h-4 w-4 mr-1" /> Ajouter
+          </Button>
+        </div>
+
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nom</TableHead>
+              <TableHead>Symbole</TableHead>
+              <TableHead>Actif</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow><TableCell colSpan={4} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin inline" /></TableCell></TableRow>
+            ) : units?.map((unit) => (
+              <TableRow key={unit.id}>
+                <TableCell>
+                  {editingId === unit.id ? (
+                    <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="h-8" />
+                  ) : unit.name}
+                </TableCell>
+                <TableCell className="font-mono text-sm">
+                  {editingId === unit.id ? (
+                    <Input value={editSymbol} onChange={(e) => setEditSymbol(e.target.value)} className="h-8 w-24" />
+                  ) : unit.symbol}
+                </TableCell>
+                <TableCell>
+                  <Switch
+                    checked={unit.active}
+                    onCheckedChange={() => handleToggleActive(unit)}
+                  />
+                </TableCell>
+                <TableCell className="text-right space-x-2">
+                  {editingId === unit.id ? (
+                    <>
+                      <Button size="sm" onClick={() => handleUpdate(unit.id)} disabled={updateUnit.isPending}>Enregistrer</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>Annuler</Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => { setEditingId(unit.id); setEditName(unit.name); setEditSymbol(unit.symbol); }}>
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button size="icon" variant="outline" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(unit.id)}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
+function TarifsTab() {
+  const { toast } = useToast();
+  const { data: prices, isLoading, refetch } = useAdminListPromotionPrices();
+  const createPrice = useAdminCreatePromotionPrice();
+  const updatePrice = useAdminUpdatePromotionPrice();
+  const deletePrice = useAdminDeletePromotionPrice();
+
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [newDuration, setNewDuration] = useState("");
+  const [newLabel, setNewLabel] = useState("");
+  const [newPrice, setNewPrice] = useState("");
+  const [editDuration, setEditDuration] = useState("");
+  const [editLabel, setEditLabel] = useState("");
+  const [editPrice, setEditPrice] = useState("");
+
+  const handleCreate = () => {
+    if (!newLabel.trim() || !newPrice.trim() || !newDuration) return;
+    createPrice.mutate(
+      { data: { duration: Number(newDuration), label: newLabel.trim(), price: newPrice.trim(), active: true } },
+      {
+        onSuccess: () => {
+          toast({ title: "Tarif créé." });
+          setNewDuration(""); setNewLabel(""); setNewPrice("");
+          refetch();
+        },
+        onError: () => toast({ title: "Erreur", variant: "destructive" })
+      }
+    );
+  };
+
+  const handleUpdate = (id: number) => {
+    updatePrice.mutate(
+      { id, data: { duration: Number(editDuration), label: editLabel, price: editPrice, active: true } },
+      {
+        onSuccess: () => { toast({ title: "Tarif mis à jour." }); setEditingId(null); refetch(); },
+        onError: () => toast({ title: "Erreur", variant: "destructive" })
+      }
+    );
+  };
+
+  const handleToggleActive = (p: { id: number; duration: number; label: string; price: string; active: boolean }) => {
+    updatePrice.mutate(
+      { id: p.id, data: { duration: p.duration, label: p.label, price: p.price, active: !p.active } },
+      {
+        onSuccess: () => { refetch(); },
+        onError: () => toast({ title: "Erreur", variant: "destructive" })
+      }
+    );
+  };
+
+  const handleDelete = (id: number) => {
+    if (confirm("Supprimer ce tarif ?")) {
+      deletePrice.mutate(
+        { id },
+        {
+          onSuccess: () => { toast({ title: "Tarif supprimé." }); refetch(); },
+          onError: () => toast({ title: "Erreur", variant: "destructive" })
+        }
+      );
+    }
+  };
+
+  return (
+    <Card className="border-primary/10 shadow-md">
+      <CardHeader className="bg-muted/30 border-b pb-4">
+        <CardTitle>Tarifs de mise en avant</CardTitle>
+        <CardDescription>Gérez les tarifs publicitaires pour la mise en avant des annonces. Ces tarifs s'affichent directement dans le formulaire de dépôt.</CardDescription>
+      </CardHeader>
+      <CardContent className="pt-6 space-y-6">
+        <div className="flex gap-3 flex-wrap">
+          <Input
+            placeholder="Durée (jours)"
+            type="number"
+            value={newDuration}
+            onChange={(e) => setNewDuration(e.target.value)}
+            className="w-32"
+          />
+          <Input
+            placeholder="Libellé (ex: 7 jours)"
+            value={newLabel}
+            onChange={(e) => setNewLabel(e.target.value)}
+            className="flex-1 min-w-[140px]"
+          />
+          <Input
+            placeholder="Prix (ex: 9.90)"
+            type="number"
+            step="0.01"
+            value={newPrice}
+            onChange={(e) => setNewPrice(e.target.value)}
+            className="w-32"
+          />
+          <Button onClick={handleCreate} disabled={createPrice.isPending}>
+            <Plus className="h-4 w-4 mr-1" /> Ajouter
+          </Button>
+        </div>
+
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Durée</TableHead>
+              <TableHead>Libellé</TableHead>
+              <TableHead>Prix (€)</TableHead>
+              <TableHead>Actif</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow><TableCell colSpan={5} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin inline" /></TableCell></TableRow>
+            ) : prices?.map((p) => (
+              <TableRow key={p.id}>
+                <TableCell>
+                  {editingId === p.id ? (
+                    <Input type="number" value={editDuration} onChange={(e) => setEditDuration(e.target.value)} className="h-8 w-24" />
+                  ) : `${p.duration} jours`}
+                </TableCell>
+                <TableCell>
+                  {editingId === p.id ? (
+                    <Input value={editLabel} onChange={(e) => setEditLabel(e.target.value)} className="h-8" />
+                  ) : p.label}
+                </TableCell>
+                <TableCell className="font-semibold text-primary">
+                  {editingId === p.id ? (
+                    <Input type="number" step="0.01" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} className="h-8 w-28" />
+                  ) : `${p.price} €`}
+                </TableCell>
+                <TableCell>
+                  <Switch checked={p.active} onCheckedChange={() => handleToggleActive(p)} />
+                </TableCell>
+                <TableCell className="text-right space-x-2">
+                  {editingId === p.id ? (
+                    <>
+                      <Button size="sm" onClick={() => handleUpdate(p.id)} disabled={updatePrice.isPending}>Enregistrer</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>Annuler</Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => { setEditingId(p.id); setEditDuration(String(p.duration)); setEditLabel(p.label); setEditPrice(p.price); }}>
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button size="icon" variant="outline" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(p.id)}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </CardContent>
@@ -242,11 +682,6 @@ function BrandingTab() {
     }
   }, [branding]);
 
-  // Handle live preview by updating inline CSS variables on the document root
-  // Note: we'd ideally convert HEX to HSL since our CSS uses HSL space separated vars,
-  // but for the sake of the live preview UI requested, we just show a visual representation
-  // in the admin panel itself without breaking the global theme complex calculations here.
-
   const handleSave = () => {
     updateBranding.mutate(
       { data: formState },
@@ -271,78 +706,42 @@ function BrandingTab() {
         <CardContent className="space-y-6">
           <div className="space-y-2">
             <Label>Nom du site</Label>
-            <Input 
-              value={formState.siteName} 
-              onChange={(e) => setFormState({...formState, siteName: e.target.value})} 
-            />
+            <Input value={formState.siteName} onChange={(e) => setFormState({ ...formState, siteName: e.target.value })} />
           </div>
-          
+
           <div className="space-y-2">
             <Label>Logo URL</Label>
-            <Input 
-              placeholder="https://..."
-              value={formState.logoUrl} 
-              onChange={(e) => setFormState({...formState, logoUrl: e.target.value})} 
-            />
+            <Input placeholder="https://..." value={formState.logoUrl} onChange={(e) => setFormState({ ...formState, logoUrl: e.target.value })} />
           </div>
 
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label>Couleur Primaire</Label>
               <div className="flex gap-2">
-                <Input 
-                  type="color" 
-                  className="w-12 p-1 h-10 cursor-pointer" 
-                  value={formState.primaryColor}
-                  onChange={(e) => setFormState({...formState, primaryColor: e.target.value})}
-                />
-                <Input 
-                  value={formState.primaryColor}
-                  onChange={(e) => setFormState({...formState, primaryColor: e.target.value})}
-                  className="font-mono"
-                />
+                <Input type="color" className="w-12 p-1 h-10 cursor-pointer" value={formState.primaryColor} onChange={(e) => setFormState({ ...formState, primaryColor: e.target.value })} />
+                <Input value={formState.primaryColor} onChange={(e) => setFormState({ ...formState, primaryColor: e.target.value })} className="font-mono" />
               </div>
             </div>
             <div className="space-y-2">
               <Label>Couleur d'Accent</Label>
               <div className="flex gap-2">
-                <Input 
-                  type="color" 
-                  className="w-12 p-1 h-10 cursor-pointer" 
-                  value={formState.accentColor}
-                  onChange={(e) => setFormState({...formState, accentColor: e.target.value})}
-                />
-                <Input 
-                  value={formState.accentColor}
-                  onChange={(e) => setFormState({...formState, accentColor: e.target.value})}
-                  className="font-mono"
-                />
+                <Input type="color" className="w-12 p-1 h-10 cursor-pointer" value={formState.accentColor} onChange={(e) => setFormState({ ...formState, accentColor: e.target.value })} />
+                <Input value={formState.accentColor} onChange={(e) => setFormState({ ...formState, accentColor: e.target.value })} className="font-mono" />
               </div>
             </div>
             <div className="space-y-2">
               <Label>Couleur de Fond</Label>
               <div className="flex gap-2">
-                <Input 
-                  type="color" 
-                  className="w-12 p-1 h-10 cursor-pointer" 
-                  value={formState.backgroundColor}
-                  onChange={(e) => setFormState({...formState, backgroundColor: e.target.value})}
-                />
-                <Input 
-                  value={formState.backgroundColor}
-                  onChange={(e) => setFormState({...formState, backgroundColor: e.target.value})}
-                  className="font-mono"
-                />
+                <Input type="color" className="w-12 p-1 h-10 cursor-pointer" value={formState.backgroundColor} onChange={(e) => setFormState({ ...formState, backgroundColor: e.target.value })} />
+                <Input value={formState.backgroundColor} onChange={(e) => setFormState({ ...formState, backgroundColor: e.target.value })} className="font-mono" />
               </div>
             </div>
           </div>
 
           <div className="space-y-2">
             <Label>Police de caractères</Label>
-            <Select value={formState.fontFamily} onValueChange={(v) => setFormState({...formState, fontFamily: v})}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+            <Select value={formState.fontFamily} onValueChange={(v) => setFormState({ ...formState, fontFamily: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="Inter">Inter (Sans-serif Moderne)</SelectItem>
                 <SelectItem value="Roboto">Roboto (Clair & Lisible)</SelectItem>
@@ -361,21 +760,13 @@ function BrandingTab() {
 
       <div className="space-y-4">
         <h3 className="font-semibold text-lg">Aperçu en direct</h3>
-        <Card 
-          className="overflow-hidden border-2 shadow-xl" 
-          style={{ 
-            backgroundColor: formState.backgroundColor,
-            fontFamily: formState.fontFamily === 'Inter' ? 'Inter, sans-serif' : formState.fontFamily,
-          }}
-        >
+        <Card className="overflow-hidden border-2 shadow-xl" style={{ backgroundColor: formState.backgroundColor, fontFamily: formState.fontFamily }}>
           <div className="h-14 border-b flex items-center px-4 justify-between" style={{ backgroundColor: '#ffffff' }}>
             <div className="flex items-center gap-2 font-bold text-lg" style={{ color: formState.primaryColor }}>
               {formState.logoUrl ? (
                 <img src={formState.logoUrl} alt="Logo" className="h-8" />
               ) : (
-                <div className="h-8 w-8 rounded flex items-center justify-center text-white" style={{ backgroundColor: formState.primaryColor }}>
-                  LM
-                </div>
+                <div className="h-8 w-8 rounded flex items-center justify-center text-white" style={{ backgroundColor: formState.primaryColor }}>LM</div>
               )}
               {formState.siteName}
             </div>
@@ -389,7 +780,7 @@ function BrandingTab() {
               <h2 className="text-3xl font-bold" style={{ color: '#1e293b' }}>
                 Bienvenue sur <span style={{ color: formState.primaryColor }}>{formState.siteName}</span>
               </h2>
-              <p style={{ color: '#64748b' }}>Aperçu de la typographie et des couleurs que vous avez sélectionnées.</p>
+              <p style={{ color: '#64748b' }}>Aperçu de la typographie et des couleurs sélectionnées.</p>
               <div className="flex gap-4">
                 <Button style={{ backgroundColor: formState.primaryColor, color: '#ffffff' }}>Action principale</Button>
                 <Button variant="outline" style={{ borderColor: formState.accentColor, color: formState.accentColor }}>Action secondaire</Button>

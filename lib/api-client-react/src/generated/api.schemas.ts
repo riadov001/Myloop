@@ -9,6 +9,15 @@ export interface HealthStatus {
   status: string;
 }
 
+export type AdListingType = typeof AdListingType[keyof typeof AdListingType];
+
+
+export const AdListingType = {
+  free: 'free',
+  flexible: 'flexible',
+  fixed: 'fixed',
+} as const;
+
 export type AdStatus = typeof AdStatus[keyof typeof AdStatus];
 
 
@@ -27,7 +36,17 @@ export interface Ad {
   product: string;
   /** @nullable */
   quantity?: string | null;
+  /** @nullable */
+  unit?: string | null;
   category: string;
+  listingType?: AdListingType;
+  /** @nullable */
+  price?: string | null;
+  isPromoted?: boolean;
+  /** @nullable */
+  promotionDuration?: number | null;
+  /** @nullable */
+  promotionPrice?: string | null;
   /** @nullable */
   contactPhone?: string | null;
   /** @nullable */
@@ -36,13 +55,28 @@ export interface Ad {
   createdAt: string;
 }
 
+export type AdInputListingType = typeof AdInputListingType[keyof typeof AdInputListingType];
+
+
+export const AdInputListingType = {
+  free: 'free',
+  flexible: 'flexible',
+  fixed: 'fixed',
+} as const;
+
 export interface AdInput {
   title: string;
   description?: string;
   location: string;
   product: string;
   quantity?: string;
+  unit?: string;
   category: string;
+  listingType?: AdInputListingType;
+  price?: string;
+  isPromoted?: boolean;
+  promotionDuration?: number;
+  promotionPrice?: string;
   contactPhone?: string;
   contactEmail?: string;
 }
@@ -74,6 +108,47 @@ export interface Branding {
   backgroundColor?: string;
   fontFamily?: string;
   siteName?: string;
+}
+
+export interface Category {
+  id: number;
+  name: string;
+  slug: string;
+  active: boolean;
+}
+
+export interface CategoryInput {
+  name: string;
+  slug: string;
+  active?: boolean;
+}
+
+export interface Unit {
+  id: number;
+  name: string;
+  symbol: string;
+  active: boolean;
+}
+
+export interface UnitInput {
+  name: string;
+  symbol: string;
+  active?: boolean;
+}
+
+export interface PromotionPrice {
+  id: number;
+  duration: number;
+  label: string;
+  price: string;
+  active: boolean;
+}
+
+export interface PromotionPriceInput {
+  duration: number;
+  label: string;
+  price: string;
+  active?: boolean;
 }
 
 export interface AdminCredentials {
@@ -115,6 +190,8 @@ category?: string;
 location?: string;
 product?: string;
 quantity?: string;
+unit?: string;
+listingType?: string;
 limit?: number;
 offset?: number;
 };

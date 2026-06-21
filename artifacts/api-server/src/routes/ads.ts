@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, adsTable } from "@workspace/db";
-import { eq, and, ilike, or } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import {
   ListAdsQueryParams,
   CreateAdBody,
@@ -10,6 +10,7 @@ import {
   UpdateAdStatusBody,
   DeleteAdParams,
 } from "@workspace/api-zod";
+import { adminAuth } from "../middleware/adminAuth";
 
 const router = Router();
 
@@ -17,7 +18,7 @@ const router = Router();
 router.get("/ads", async (req, res) => {
   try {
     const query = ListAdsQueryParams.parse(req.query);
-    let conditions: ReturnType<typeof eq>[] = [eq(adsTable.status, "published")];
+    const conditions: ReturnType<typeof eq>[] = [eq(adsTable.status, "published")];
 
     const ads = await db
       .select()
@@ -42,6 +43,16 @@ router.get("/ads", async (req, res) => {
     if (query.category) {
       filtered = filtered.filter((a) =>
         a.category.toLowerCase() === (query.category as string).toLowerCase()
+      );
+    }
+    if (query.unit) {
+      filtered = filtered.filter((a) =>
+        a.unit?.toLowerCase() === (query.unit as string).toLowerCase()
+      );
+    }
+    if (query.listingType) {
+      filtered = filtered.filter((a) =>
+        a.listingType === (query.listingType as string)
       );
     }
 
@@ -69,7 +80,13 @@ router.post("/ads", async (req, res) => {
         location: body.location,
         product: body.product,
         quantity: body.quantity,
+        unit: body.unit,
         category: body.category,
+        listingType: (body.listingType as "free" | "flexible" | "fixed") ?? "flexible",
+        price: body.price,
+        isPromoted: body.isPromoted ?? false,
+        promotionDuration: body.promotionDuration,
+        promotionPrice: body.promotionPrice,
         contactPhone: body.contactPhone,
         contactEmail: body.contactEmail,
         status: "pending",
@@ -87,7 +104,7 @@ router.get("/ads/:id", async (req, res) => {
   try {
     const { id } = GetAdParams.parse(req.params);
     const [ad] = await db.select().from(adsTable).where(eq(adsTable.id, id));
-    if (!ad) return res.status(404).json({ error: "Ad not found" });
+    if (!ad) { res.status(404).json({ error: "Ad not found" }); return; }
     res.json({ ...ad, createdAt: ad.createdAt.toISOString() });
   } catch (err) {
     req.log.error(err);
@@ -95,8 +112,8 @@ router.get("/ads/:id", async (req, res) => {
   }
 });
 
-// GET /admin/ads — list all ads (admin)
-router.get("/admin/ads", async (req, res) => {
+// GET /admin/ads — list all ads (admin) — PROTECTED
+router.get("/admin/ads", adminAuth, async (req, res) => {
   try {
     const query = AdminListAdsQueryParams.parse(req.query);
     const conditions = query.status
@@ -116,8 +133,8 @@ router.get("/admin/ads", async (req, res) => {
   }
 });
 
-// PATCH /admin/ads/:id/status — update ad status
-router.patch("/admin/ads/:id/status", async (req, res) => {
+// PATCH /admin/ads/:id/status — update ad status — PROTECTED
+router.patch("/admin/ads/:id/status", adminAuth, async (req, res) => {
   try {
     const { id } = UpdateAdStatusParams.parse(req.params);
     const { status } = UpdateAdStatusBody.parse(req.body);
@@ -126,7 +143,7 @@ router.patch("/admin/ads/:id/status", async (req, res) => {
       .set({ status })
       .where(eq(adsTable.id, id))
       .returning();
-    if (!updated) return res.status(404).json({ error: "Ad not found" });
+    if (!updated) { res.status(404).json({ error: "Ad not found" }); return; }
     res.json({ ...updated, createdAt: updated.createdAt.toISOString() });
   } catch (err) {
     req.log.error(err);
@@ -134,8 +151,8 @@ router.patch("/admin/ads/:id/status", async (req, res) => {
   }
 });
 
-// DELETE /admin/ads/:id
-router.delete("/admin/ads/:id", async (req, res) => {
+// DELETE /admin/ads/:id — PROTECTED
+router.delete("/admin/ads/:id", adminAuth, async (req, res) => {
   try {
     const { id } = DeleteAdParams.parse(req.params);
     await db.delete(adsTable).where(eq(adsTable.id, id));

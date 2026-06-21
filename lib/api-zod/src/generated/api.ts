@@ -24,6 +24,8 @@ export const ListAdsQueryParams = zod.object({
   "location": zod.coerce.string().optional(),
   "product": zod.coerce.string().optional(),
   "quantity": zod.coerce.string().optional(),
+  "unit": zod.coerce.string().optional(),
+  "listingType": zod.coerce.string().optional(),
   "limit": zod.coerce.number().optional(),
   "offset": zod.coerce.number().optional()
 })
@@ -35,7 +37,13 @@ export const ListAdsResponseItem = zod.object({
   "location": zod.string(),
   "product": zod.string(),
   "quantity": zod.string().nullish(),
+  "unit": zod.string().nullish(),
   "category": zod.string(),
+  "listingType": zod.enum(['free', 'flexible', 'fixed']).optional(),
+  "price": zod.string().nullish(),
+  "isPromoted": zod.boolean().optional(),
+  "promotionDuration": zod.number().nullish(),
+  "promotionPrice": zod.string().nullish(),
   "contactPhone": zod.string().nullish(),
   "contactEmail": zod.string().nullish(),
   "status": zod.enum(['pending', 'published', 'rejected']),
@@ -53,7 +61,13 @@ export const CreateAdBody = zod.object({
   "location": zod.string(),
   "product": zod.string(),
   "quantity": zod.string().optional(),
+  "unit": zod.string().optional(),
   "category": zod.string(),
+  "listingType": zod.enum(['free', 'flexible', 'fixed']).optional(),
+  "price": zod.string().optional(),
+  "isPromoted": zod.boolean().optional(),
+  "promotionDuration": zod.number().optional(),
+  "promotionPrice": zod.string().optional(),
   "contactPhone": zod.string().optional(),
   "contactEmail": zod.string().optional()
 })
@@ -73,7 +87,13 @@ export const GetAdResponse = zod.object({
   "location": zod.string(),
   "product": zod.string(),
   "quantity": zod.string().nullish(),
+  "unit": zod.string().nullish(),
   "category": zod.string(),
+  "listingType": zod.enum(['free', 'flexible', 'fixed']).optional(),
+  "price": zod.string().nullish(),
+  "isPromoted": zod.boolean().optional(),
+  "promotionDuration": zod.number().nullish(),
+  "promotionPrice": zod.string().nullish(),
   "contactPhone": zod.string().nullish(),
   "contactEmail": zod.string().nullish(),
   "status": zod.enum(['pending', 'published', 'rejected']),
@@ -92,6 +112,30 @@ export const GetStatsResponse = zod.object({
 
 
 /**
+ * @summary List active categories
+ */
+export const ListCategoriesResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "slug": zod.string(),
+  "active": zod.boolean()
+})
+export const ListCategoriesResponse = zod.array(ListCategoriesResponseItem)
+
+
+/**
+ * @summary List active units
+ */
+export const ListUnitsResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "symbol": zod.string(),
+  "active": zod.boolean()
+})
+export const ListUnitsResponse = zod.array(ListUnitsResponseItem)
+
+
+/**
  * @summary Admin - list all ads (including pending)
  */
 export const AdminListAdsQueryParams = zod.object({
@@ -105,7 +149,13 @@ export const AdminListAdsResponseItem = zod.object({
   "location": zod.string(),
   "product": zod.string(),
   "quantity": zod.string().nullish(),
+  "unit": zod.string().nullish(),
   "category": zod.string(),
+  "listingType": zod.enum(['free', 'flexible', 'fixed']).optional(),
+  "price": zod.string().nullish(),
+  "isPromoted": zod.boolean().optional(),
+  "promotionDuration": zod.number().nullish(),
+  "promotionPrice": zod.string().nullish(),
   "contactPhone": zod.string().nullish(),
   "contactEmail": zod.string().nullish(),
   "status": zod.enum(['pending', 'published', 'rejected']),
@@ -132,7 +182,13 @@ export const UpdateAdStatusResponse = zod.object({
   "location": zod.string(),
   "product": zod.string(),
   "quantity": zod.string().nullish(),
+  "unit": zod.string().nullish(),
   "category": zod.string(),
+  "listingType": zod.enum(['free', 'flexible', 'fixed']).optional(),
+  "price": zod.string().nullish(),
+  "isPromoted": zod.boolean().optional(),
+  "promotionDuration": zod.number().nullish(),
+  "promotionPrice": zod.string().nullish(),
   "contactPhone": zod.string().nullish(),
   "contactEmail": zod.string().nullish(),
   "status": zod.enum(['pending', 'published', 'rejected']),
@@ -180,6 +236,163 @@ export const UpdateBrandingResponse = zod.object({
   "backgroundColor": zod.string().optional(),
   "fontFamily": zod.string().optional(),
   "siteName": zod.string().optional()
+})
+
+
+/**
+ * @summary Admin - list all categories
+ */
+export const AdminListCategoriesResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "slug": zod.string(),
+  "active": zod.boolean()
+})
+export const AdminListCategoriesResponse = zod.array(AdminListCategoriesResponseItem)
+
+
+/**
+ * @summary Admin - create category
+ */
+export const AdminCreateCategoryBody = zod.object({
+  "name": zod.string(),
+  "slug": zod.string(),
+  "active": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Admin - update category
+ */
+export const AdminUpdateCategoryParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const AdminUpdateCategoryBody = zod.object({
+  "name": zod.string(),
+  "slug": zod.string(),
+  "active": zod.boolean().optional()
+})
+
+export const AdminUpdateCategoryResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "slug": zod.string(),
+  "active": zod.boolean()
+})
+
+
+/**
+ * @summary Admin - delete category
+ */
+export const AdminDeleteCategoryParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary Admin - list all units
+ */
+export const AdminListUnitsResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "symbol": zod.string(),
+  "active": zod.boolean()
+})
+export const AdminListUnitsResponse = zod.array(AdminListUnitsResponseItem)
+
+
+/**
+ * @summary Admin - create unit
+ */
+export const AdminCreateUnitBody = zod.object({
+  "name": zod.string(),
+  "symbol": zod.string(),
+  "active": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Admin - update unit
+ */
+export const AdminUpdateUnitParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const AdminUpdateUnitBody = zod.object({
+  "name": zod.string(),
+  "symbol": zod.string(),
+  "active": zod.boolean().optional()
+})
+
+export const AdminUpdateUnitResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "symbol": zod.string(),
+  "active": zod.boolean()
+})
+
+
+/**
+ * @summary Admin - delete unit
+ */
+export const AdminDeleteUnitParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary Admin - list promotion prices
+ */
+export const AdminListPromotionPricesResponseItem = zod.object({
+  "id": zod.number(),
+  "duration": zod.number(),
+  "label": zod.string(),
+  "price": zod.string(),
+  "active": zod.boolean()
+})
+export const AdminListPromotionPricesResponse = zod.array(AdminListPromotionPricesResponseItem)
+
+
+/**
+ * @summary Admin - create promotion price
+ */
+export const AdminCreatePromotionPriceBody = zod.object({
+  "duration": zod.number(),
+  "label": zod.string(),
+  "price": zod.string(),
+  "active": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Admin - update promotion price
+ */
+export const AdminUpdatePromotionPriceParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const AdminUpdatePromotionPriceBody = zod.object({
+  "duration": zod.number(),
+  "label": zod.string(),
+  "price": zod.string(),
+  "active": zod.boolean().optional()
+})
+
+export const AdminUpdatePromotionPriceResponse = zod.object({
+  "id": zod.number(),
+  "duration": zod.number(),
+  "label": zod.string(),
+  "price": zod.string(),
+  "active": zod.boolean()
+})
+
+
+/**
+ * @summary Admin - delete promotion price
+ */
+export const AdminDeletePromotionPriceParams = zod.object({
+  "id": zod.coerce.number()
 })
 
 

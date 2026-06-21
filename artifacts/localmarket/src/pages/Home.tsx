@@ -1,40 +1,45 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Search, MapPin, Package, Scale, ArrowRight, Tag } from "lucide-react";
+import { Search, MapPin, Package, Scale, ArrowRight, Tag, Layers, Euro } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PublicLayout } from "@/components/layout/PublicLayout";
-import { useListAds } from "@workspace/api-client-react";
+import { useListAds, useListCategories, useListUnits } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MapView } from "@/components/MapView";
 
 export default function Home() {
   const [, setLocation] = useLocation();
   const [searchLocation, setSearchLocation] = useState("");
+  const [category, setCategory] = useState("");
   const [product, setProduct] = useState("");
   const [quantity, setQuantity] = useState("");
-  const [price, setPrice] = useState("");
+  const [unit, setUnit] = useState("");
+  const [listingType, setListingType] = useState("");
 
   const { data: ads, isLoading: adsLoading } = useListAds({ limit: 20 });
+  const { data: categories } = useListCategories();
+  const { data: units } = useListUnits();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const params = new URLSearchParams();
     if (searchLocation) params.set("location", searchLocation);
+    if (category) params.set("category", category);
     if (product) params.set("product", product);
     if (quantity) params.set("quantity", quantity);
-    if (price) params.set("price", price);
+    if (unit) params.set("unit", unit);
+    if (listingType) params.set("listingType", listingType);
     setLocation(`/publicites?${params.toString()}`);
   };
 
   return (
     <PublicLayout>
-      {/* Hero Section */}
       <section className="py-16 lg:py-24">
         <div className="container max-w-7xl px-4">
           <div className="grid lg:grid-cols-2 gap-10 items-start">
-            {/* Left — texte + recherche */}
             <div className="space-y-8">
               <div className="inline-flex items-center gap-2 border border-primary/40 bg-primary/10 text-primary text-xs font-semibold px-4 py-1.5 rounded-full uppercase tracking-widest">
                 <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
@@ -50,9 +55,9 @@ export default function Home() {
                 LocalMarket connecte voisins, agriculteurs et artisans pour échanger produits et ressources localement.
               </p>
 
-              {/* Barre de recherche */}
               <Card className="border-border/60 bg-card shadow-xl shadow-black/30">
                 <form onSubmit={handleSearch} className="flex flex-col gap-0">
+                  {/* Localisation */}
                   <div className="flex items-center gap-3 px-4 py-3 border-b border-border/50">
                     <MapPin className="h-4 w-4 text-primary shrink-0" />
                     <div className="flex-1">
@@ -66,6 +71,27 @@ export default function Home() {
                       />
                     </div>
                   </div>
+
+                  {/* Catégorie */}
+                  <div className="flex items-center gap-3 px-4 py-3 border-b border-border/50">
+                    <Layers className="h-4 w-4 text-primary shrink-0" />
+                    <div className="flex-1">
+                      <div className="text-[10px] font-bold text-primary/80 uppercase tracking-widest mb-0.5">Catégorie</div>
+                      <Select value={category} onValueChange={setCategory}>
+                        <SelectTrigger className="border-0 bg-transparent shadow-none focus:ring-0 p-0 h-auto text-sm text-foreground">
+                          <SelectValue placeholder="Toutes les catégories" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Toutes les catégories</SelectItem>
+                          {categories?.map((cat) => (
+                            <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Produit */}
                   <div className="flex items-center gap-3 px-4 py-3 border-b border-border/50">
                     <Package className="h-4 w-4 text-primary shrink-0" />
                     <div className="flex-1">
@@ -79,32 +105,54 @@ export default function Home() {
                       />
                     </div>
                   </div>
+
+                  {/* Quantité + Unité */}
                   <div className="flex items-center gap-3 px-4 py-3 border-b border-border/50">
                     <Scale className="h-4 w-4 text-primary shrink-0" />
                     <div className="flex-1">
                       <div className="text-[10px] font-bold text-primary/80 uppercase tracking-widest mb-0.5">Quantité</div>
-                      <Input
-                        placeholder="ex: 10 kg, 3 stères, 2 palettes..."
-                        className="border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 h-auto text-sm text-foreground placeholder:text-muted-foreground"
-                        value={quantity}
-                        onChange={(e) => setQuantity(e.target.value)}
-                        data-testid="input-quantity"
-                      />
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="ex: 10"
+                          className="border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 h-auto text-sm text-foreground placeholder:text-muted-foreground flex-1"
+                          value={quantity}
+                          onChange={(e) => setQuantity(e.target.value)}
+                          data-testid="input-quantity"
+                        />
+                        <Select value={unit} onValueChange={setUnit}>
+                          <SelectTrigger className="border-0 bg-transparent shadow-none focus:ring-0 p-0 h-auto text-sm w-24 shrink-0">
+                            <SelectValue placeholder="Unité" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Toutes</SelectItem>
+                            {units?.map((u) => (
+                              <SelectItem key={u.id} value={u.symbol}>{u.symbol}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   </div>
+
+                  {/* Prix / Don */}
                   <div className="flex items-center gap-3 px-4 py-3">
-                    <Tag className="h-4 w-4 text-primary shrink-0" />
+                    <Euro className="h-4 w-4 text-primary shrink-0" />
                     <div className="flex-1">
                       <div className="text-[10px] font-bold text-primary/80 uppercase tracking-widest mb-0.5">Prix / Don</div>
-                      <Input
-                        placeholder="gratuit, don libre, prix fixe..."
-                        className="border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 h-auto text-sm text-foreground placeholder:text-muted-foreground"
-                        value={price}
-                        onChange={(e) => setPrice(e.target.value)}
-                        data-testid="input-price"
-                      />
+                      <Select value={listingType} onValueChange={setListingType}>
+                        <SelectTrigger className="border-0 bg-transparent shadow-none focus:ring-0 p-0 h-auto text-sm text-foreground">
+                          <SelectValue placeholder="Tous les types" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tous les types</SelectItem>
+                          <SelectItem value="free">Don gratuit</SelectItem>
+                          <SelectItem value="flexible">Prix libre</SelectItem>
+                          <SelectItem value="fixed">Prix fixe</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
+
                   <div className="px-4 pb-4">
                     <Button type="submit" className="w-full h-11 font-semibold text-base" data-testid="button-search">
                       <Search className="h-4 w-4 mr-2" />
@@ -115,7 +163,6 @@ export default function Home() {
               </Card>
             </div>
 
-            {/* Right — Carte OpenStreetMap */}
             <div className="relative h-[560px] w-full rounded-2xl overflow-hidden border border-border/50 shadow-2xl shadow-black/40">
               {adsLoading ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-card text-muted-foreground gap-3">
@@ -130,7 +177,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Dernières annonces */}
       <section className="py-16 border-t border-border/30">
         <div className="container max-w-7xl px-4">
           <div className="flex items-center justify-between mb-8">
@@ -173,22 +219,32 @@ export default function Home() {
                   <div className="absolute top-2 left-2 bg-background/80 backdrop-blur-sm px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wide text-foreground border border-border/50">
                     {ad.category}
                   </div>
+                  {ad.isPromoted && (
+                    <div className="absolute top-2 right-2 bg-amber-500 text-white px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wide">
+                      Mis en avant
+                    </div>
+                  )}
                 </div>
                 <CardContent className="p-4">
                   <h3 className="font-semibold text-sm leading-tight mb-2 group-hover:text-primary transition-colors line-clamp-2 text-foreground">
                     {ad.title}
                   </h3>
-                  {ad.quantity && (
+                  {(ad.quantity || ad.unit) && (
                     <div className="flex items-center text-xs text-muted-foreground mb-1">
-                      <Package className="h-3 w-3 mr-1 shrink-0" />
-                      <span>{ad.quantity}</span>
+                      <Scale className="h-3 w-3 mr-1 shrink-0" />
+                      <span>{[ad.quantity, ad.unit].filter(Boolean).join(" ")}</span>
                     </div>
                   )}
-                  <div className="flex items-center text-xs text-muted-foreground mb-3">
+                  <div className="flex items-center text-xs text-muted-foreground mb-1">
                     <MapPin className="h-3 w-3 mr-1 shrink-0" />
                     <span className="truncate">{ad.location}</span>
                   </div>
-                  <div className="text-[10px] text-muted-foreground/60">
+                  {ad.listingType && (
+                    <div className="text-xs text-muted-foreground">
+                      {ad.listingType === "free" ? "Don gratuit" : ad.listingType === "fixed" ? `Prix fixe${ad.price ? ` : ${ad.price} €` : ""}` : ad.price ? `${ad.price} €` : "Prix libre"}
+                    </div>
+                  )}
+                  <div className="text-[10px] text-muted-foreground/60 mt-2">
                     {new Date(ad.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
                   </div>
                 </CardContent>

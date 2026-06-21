@@ -11,6 +11,8 @@ category?: string;
 location?: string;
 product?: string;
 quantity?: string;
+unit?: string;
+listingType?: string;
 limit?: number;
 offset?: number;
 };

@@ -9,7 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useCreateAd } from "@workspace/api-client-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { useCreateAd, useListCategories, useListUnits } from "@workspace/api-client-react";
+import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle2, ArrowLeft } from "lucide-react";
 
@@ -17,9 +21,14 @@ const formSchema = z.object({
   title: z.string().min(5, "Le titre doit faire au moins 5 caractères"),
   description: z.string().optional(),
   location: z.string().min(2, "La localisation est requise"),
+  category: z.string().min(1, "La catégorie est requise"),
   product: z.string().min(2, "Le produit est requis"),
   quantity: z.string().optional(),
-  category: z.string().optional(),
+  unit: z.string().optional(),
+  listingType: z.enum(["free", "flexible", "fixed"]).default("flexible"),
+  price: z.string().optional(),
+  isPromoted: z.boolean().default(false),
+  promotionDuration: z.number().optional(),
   contactPhone: z.string().optional(),
   contactEmail: z.string().email("Email invalide").optional().or(z.literal('')),
 });
@@ -30,28 +39,52 @@ export default function PostAd() {
   const createAd = useCreateAd();
   const [isSuccess, setIsSuccess] = useState(false);
 
+  const { data: categories } = useListCategories();
+  const { data: units } = useListUnits();
+  const { data: promotionPrices } = useQuery<{ id: number; duration: number; label: string; price: string; active: boolean }[]>({
+    queryKey: ["/api/promotion-prices"],
+    queryFn: () => fetch("/api/promotion-prices").then((r) => r.json()),
+  });
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
       description: "",
       location: "",
+      category: "",
       product: "",
       quantity: "",
-      category: "AUTRES",
+      unit: "",
+      listingType: "flexible",
+      price: "",
+      isPromoted: false,
+      promotionDuration: undefined,
       contactPhone: "",
       contactEmail: "",
     },
   });
 
+  const listingType = form.watch("listingType");
+  const isPromoted = form.watch("isPromoted");
+
   const onSubmit = (values: z.infer<typeof formSchema>) => {
+    const selectedPromoPrice = promotionPrices?.find(p => p.duration === values.promotionDuration);
     createAd.mutate(
-      { data: values },
+      {
+        data: {
+          ...values,
+          price: values.listingType === "free" ? undefined : values.price || undefined,
+          isPromoted: values.isPromoted,
+          promotionDuration: values.isPromoted ? values.promotionDuration : undefined,
+          promotionPrice: values.isPromoted && selectedPromoPrice ? selectedPromoPrice.price : undefined,
+        }
+      },
       {
         onSuccess: () => {
           setIsSuccess(true);
         },
-        onError: (error) => {
+        onError: () => {
           toast({
             title: "Erreur",
             description: "Une erreur est survenue lors de la création de l'annonce.",
@@ -107,7 +140,7 @@ export default function PostAd() {
           <CardContent className="pt-8">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                
+
                 <div className="space-y-6">
                   <FormField
                     control={form.control}
@@ -137,15 +170,52 @@ export default function PostAd() {
                     )}
                   />
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField
+                    control={form.control}
+                    name="category"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Catégorie <span className="text-destructive">*</span></FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="h-12">
+                              <SelectValue placeholder="Sélectionnez une catégorie" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {categories?.map((cat) => (
+                              <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="product"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Produit / Élément <span className="text-destructive">*</span></FormLabel>
+                        <FormControl>
+                          <Input placeholder="Ex: Tomates Coeur de Boeuf" className="h-12" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
-                      name="product"
+                      name="quantity"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Produit / Élément <span className="text-destructive">*</span></FormLabel>
+                          <FormLabel>Quantité</FormLabel>
                           <FormControl>
-                            <Input placeholder="Ex: Tomates Coeur de Boeuf" className="h-12" {...field} />
+                            <Input placeholder="Ex: 5, 10, 2" className="h-12" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -154,13 +224,22 @@ export default function PostAd() {
 
                     <FormField
                       control={form.control}
-                      name="quantity"
+                      name="unit"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Quantité</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Ex: 5 kg, 3 cageots..." className="h-12" {...field} />
-                          </FormControl>
+                          <FormLabel>Unité <span className="text-destructive">*</span></FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger className="h-12">
+                                <SelectValue placeholder="Unité de mesure" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {units?.map((u) => (
+                                <SelectItem key={u.id} value={u.symbol}>{u.name} ({u.symbol})</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -174,10 +253,10 @@ export default function PostAd() {
                       <FormItem>
                         <FormLabel>Description détaillée</FormLabel>
                         <FormControl>
-                          <Textarea 
-                            placeholder="Décrivez votre produit, vos conditions d'échange, etc." 
-                            className="min-h-[120px] resize-y" 
-                            {...field} 
+                          <Textarea
+                            placeholder="Décrivez votre produit, vos conditions d'échange, etc."
+                            className="min-h-[120px] resize-y"
+                            {...field}
                           />
                         </FormControl>
                         <FormMessage />
@@ -186,12 +265,158 @@ export default function PostAd() {
                   />
                 </div>
 
+                {/* Section Prix / Don */}
+                <div className="space-y-6 pt-6 border-t border-border">
+                  <h3 className="text-lg font-semibold">Type de transaction</h3>
+
+                  <FormField
+                    control={form.control}
+                    name="listingType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            className="grid grid-cols-3 gap-4"
+                          >
+                            <div>
+                              <RadioGroupItem value="free" id="free" className="peer sr-only" />
+                              <Label
+                                htmlFor="free"
+                                className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary cursor-pointer text-center"
+                              >
+                                <span className="text-base font-semibold">Don gratuit</span>
+                                <span className="text-xs text-muted-foreground mt-1">Aucun montant</span>
+                              </Label>
+                            </div>
+                            <div>
+                              <RadioGroupItem value="flexible" id="flexible" className="peer sr-only" />
+                              <Label
+                                htmlFor="flexible"
+                                className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary cursor-pointer text-center"
+                              >
+                                <span className="text-base font-semibold">Prix libre</span>
+                                <span className="text-xs text-muted-foreground mt-1">Montant facultatif</span>
+                              </Label>
+                            </div>
+                            <div>
+                              <RadioGroupItem value="fixed" id="fixed" className="peer sr-only" />
+                              <Label
+                                htmlFor="fixed"
+                                className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary cursor-pointer text-center"
+                              >
+                                <span className="text-base font-semibold">Prix fixe</span>
+                                <span className="text-xs text-muted-foreground mt-1">Montant obligatoire</span>
+                              </Label>
+                            </div>
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {(listingType === "flexible" || listingType === "fixed") && (
+                    <FormField
+                      control={form.control}
+                      name="price"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            Montant (€) {listingType === "fixed" && <span className="text-destructive">*</span>}
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder={listingType === "fixed" ? "Ex: 15.00" : "Ex: 10.00 (facultatif)"}
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              className="h-12"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
+
+                {/* Section Mise en avant */}
+                <div className="space-y-6 pt-6 border-t border-border">
+                  <div>
+                    <h3 className="text-lg font-semibold">Mise en avant de l'annonce</h3>
+                    <p className="text-sm text-muted-foreground mt-1">Augmentez la visibilité de votre annonce en la mettant en avant.</p>
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="isPromoted"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={(val) => field.onChange(val === "true")}
+                            value={String(field.value)}
+                            className="flex gap-6"
+                          >
+                            <div className="flex items-center gap-2">
+                              <RadioGroupItem value="false" id="promo-no" />
+                              <Label htmlFor="promo-no" className="cursor-pointer font-normal">Non</Label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <RadioGroupItem value="true" id="promo-yes" />
+                              <Label htmlFor="promo-yes" className="cursor-pointer font-normal">Oui</Label>
+                            </div>
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {isPromoted && promotionPrices && promotionPrices.length > 0 && (
+                    <FormField
+                      control={form.control}
+                      name="promotionDuration"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Durée de mise en avant <span className="text-destructive">*</span></FormLabel>
+                          <FormControl>
+                            <RadioGroup
+                              onValueChange={(val) => field.onChange(Number(val))}
+                              value={field.value ? String(field.value) : ""}
+                              className="grid grid-cols-3 gap-4"
+                            >
+                              {promotionPrices.filter(p => p.active).map((promo) => (
+                                <div key={promo.id}>
+                                  <RadioGroupItem value={String(promo.duration)} id={`promo-${promo.id}`} className="peer sr-only" />
+                                  <Label
+                                    htmlFor={`promo-${promo.id}`}
+                                    className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary cursor-pointer text-center"
+                                  >
+                                    <span className="text-base font-semibold">{promo.label}</span>
+                                    <span className="text-primary font-bold mt-1">{promo.price} €</span>
+                                  </Label>
+                                </div>
+                              ))}
+                            </RadioGroup>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
+
+                {/* Section Contact */}
                 <div className="space-y-6 pt-6 border-t border-border">
                   <h3 className="text-lg font-semibold">Contact (Optionnel)</h3>
                   <p className="text-sm text-muted-foreground -mt-4">
-                    Laissez un moyen de vous joindre directement. Si vide, les utilisateurs utiliseront la messagerie intégrée.
+                    Laissez un moyen de vous joindre directement.
                   </p>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField
                       control={form.control}

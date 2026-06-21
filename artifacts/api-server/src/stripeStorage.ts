@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { db } from './lib/db';
+import { db } from '@workspace/db';
 
 export class StripeStorage {
   async listProductsWithPrices(active = true) {

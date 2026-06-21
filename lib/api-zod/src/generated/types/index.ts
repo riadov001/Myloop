@@ -8,6 +8,8 @@
 
 export * from './ad';
 export * from './adInput';
+export * from './adInputListingType';
+export * from './adListingType';
 export * from './adminCredentials';
 export * from './adminListAdsParams';
 export * from './adStatus';
@@ -15,10 +17,16 @@ export * from './adStatusUpdate';
 export * from './adStatusUpdateStatus';
 export * from './authResult';
 export * from './branding';
+export * from './category';
+export * from './categoryInput';
 export * from './healthStatus';
 export * from './listAdsParams';
 export * from './loginInput';
 export * from './loginResult';
+export * from './promotionPrice';
+export * from './promotionPriceInput';
 export * from './registerInput';
 export * from './stats';
+export * from './unit';
+export * from './unitInput';
 export * from './userProfile';

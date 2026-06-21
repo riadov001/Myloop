@@ -203,6 +203,9 @@ importers:
       pino-http:
         specifier: ^10.5.0
         version: 10.5.0
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
     devDependencies:
       '@types/bcryptjs':
         specifier: ^3.0.0
@@ -664,6 +667,10 @@ importers:
         version: 0.31.10
 
   scripts:
+    dependencies:
+      '@workspace/db':
+        specifier: workspace:*
+        version: link:../lib/db
     devDependencies:
       '@types/node':
         specifier: 'catalog:'

@@ -2,11 +2,12 @@ import { Router } from "express";
 import { db, brandingTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { UpdateBrandingBody } from "@workspace/api-zod";
+import { adminAuth } from "../middleware/adminAuth";
 
 const router = Router();
 
-// GET /admin/branding
-router.get("/admin/branding", async (req, res) => {
+// GET /admin/branding — PROTECTED
+router.get("/admin/branding", adminAuth, async (req, res) => {
   try {
     let [branding] = await db.select().from(brandingTable).limit(1);
     if (!branding) {
@@ -36,8 +37,8 @@ router.get("/admin/branding", async (req, res) => {
   }
 });
 
-// PUT /admin/branding
-router.put("/admin/branding", async (req, res) => {
+// PUT /admin/branding — PROTECTED
+router.put("/admin/branding", adminAuth, async (req, res) => {
   try {
     const body = UpdateBrandingBody.parse(req.body);
     let [existing] = await db.select().from(brandingTable).limit(1);

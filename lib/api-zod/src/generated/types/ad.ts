@@ -5,6 +5,7 @@
  * LocalMarket API
  * OpenAPI spec version: 0.1.0
  */
+import type { AdListingType } from './adListingType';
 import type { AdStatus } from './adStatus';
 
 export interface Ad {
@@ -16,7 +17,17 @@ export interface Ad {
   product: string;
   /** @nullable */
   quantity?: string | null;
+  /** @nullable */
+  unit?: string | null;
   category: string;
+  listingType?: AdListingType;
+  /** @nullable */
+  price?: string | null;
+  isPromoted?: boolean;
+  /** @nullable */
+  promotionDuration?: number | null;
+  /** @nullable */
+  promotionPrice?: string | null;
   /** @nullable */
   contactPhone?: string | null;
   /** @nullable */

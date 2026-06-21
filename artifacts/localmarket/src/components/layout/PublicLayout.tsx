@@ -4,9 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useHealthCheck } from "@workspace/api-client-react";
 
+function useIsAdmin() {
+  if (typeof window === "undefined") return false;
+  return !!localStorage.getItem("adminToken");
+}
+
 export function PublicLayout({ children }: { children: React.ReactNode }) {
   const [, setLocation] = useLocation();
   const { data: health } = useHealthCheck();
+  const isAdmin = useIsAdmin();
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-background font-sans text-foreground">
@@ -25,7 +31,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
               <Link href="/deposer" className="text-sm font-medium transition-colors hover:text-primary">Déposer une annonce</Link>
             </nav>
           </div>
-          
+
           <div className="hidden md:flex items-center gap-4">
             <Button variant="outline" className="text-yellow-600 border-yellow-600 hover:bg-yellow-50 font-semibold">
               Dons
@@ -82,7 +88,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
               </div>
             )}
           </div>
-          
+
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Navigation</h3>
             <ul className="space-y-2 text-sm">
@@ -92,14 +98,16 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
               <li><Link href="#" className="hover:text-white transition-colors">FAQ</Link></li>
             </ul>
           </div>
-          
+
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Légal</h3>
             <ul className="space-y-2 text-sm">
               <li><Link href="/mentions-legales" className="hover:text-white transition-colors">Mentions légales</Link></li>
               <li><Link href="/cgu" className="hover:text-white transition-colors">CGU</Link></li>
               <li><Link href="/politique-confidentialite" className="hover:text-white transition-colors">Politique de confidentialité</Link></li>
-              <li><Link href="/admin" className="hover:text-white transition-colors">Administration</Link></li>
+              {isAdmin && (
+                <li><Link href="/admin" className="hover:text-white transition-colors">Administration</Link></li>
+              )}
             </ul>
           </div>
         </div>

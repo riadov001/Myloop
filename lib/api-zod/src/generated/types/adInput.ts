@@ -5,6 +5,7 @@
  * LocalMarket API
  * OpenAPI spec version: 0.1.0
  */
+import type { AdInputListingType } from './adInputListingType';
 
 export interface AdInput {
   title: string;
@@ -12,7 +13,13 @@ export interface AdInput {
   location: string;
   product: string;
   quantity?: string;
+  unit?: string;
   category: string;
+  listingType?: AdInputListingType;
+  price?: string;
+  isPromoted?: boolean;
+  promotionDuration?: number;
+  promotionPrice?: string;
   contactPhone?: string;
   contactEmail?: string;
 }

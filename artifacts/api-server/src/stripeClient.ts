@@ -27,7 +27,7 @@ async function getStripeCredentials(): Promise<{ secretKey: string; webhookSecre
     throw new Error(`Échec de récupération des credentials Stripe: ${resp.status} ${resp.statusText}`);
   }
 
-  const data = await resp.json();
+  const data = await resp.json() as { items?: Array<{ settings?: { secret_key?: string; publishable_key?: string; webhook_secret?: string } }> };
   const settings = data.items?.[0]?.settings;
 
   if (!settings?.secret_key) {
