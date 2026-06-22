@@ -1,21 +1,47 @@
 import { Router } from "express";
+import bcrypt from "bcryptjs";
+import { db, adminUsersTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import { AdminLoginBody } from "@workspace/api-zod";
 
 const router = Router();
 
-const ADMIN_EMAIL = "admin@localmarket.fr";
-const ADMIN_PASSWORD = "admin123";
-const ADMIN_TOKEN = "localmarket-admin-token-2026";
+export const ROOT_EMAIL = "admin@localmarket.fr";
+export const ROOT_PASSWORD = "admin123";
+export const ROOT_TOKEN = "localmarket-root-token-2026";
+export const ADMIN_TOKEN_PREFIX = "localmarket-admin-token-2026";
 
-// POST /admin/login
+// POST /admin/login — checks root hardcoded creds first, then DB admin users
 router.post("/admin/login", async (req, res) => {
   try {
     const { email, password } = AdminLoginBody.parse(req.body);
-    if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-      res.json({ success: true, token: ADMIN_TOKEN });
-    } else {
-      res.status(401).json({ success: false, token: "" });
+
+    // Root admin (hardcoded — always works)
+    if (email === ROOT_EMAIL && password === ROOT_PASSWORD) {
+      res.json({ success: true, token: ROOT_TOKEN, role: "root" });
+      return;
     }
+
+    // DB admin users
+    const [user] = await db
+      .select()
+      .from(adminUsersTable)
+      .where(eq(adminUsersTable.email, email));
+
+    if (user && user.isActive) {
+      const valid = await bcrypt.compare(password, user.passwordHash);
+      if (valid) {
+        await db
+          .update(adminUsersTable)
+          .set({ lastLoginAt: new Date() })
+          .where(eq(adminUsersTable.id, user.id));
+        const token = `${ADMIN_TOKEN_PREFIX}:${user.id}:${user.role}`;
+        res.json({ success: true, token, role: user.role });
+        return;
+      }
+    }
+
+    res.status(401).json({ success: false, token: "", role: null });
   } catch (err) {
     req.log.error(err);
     res.status(400).json({ error: "Invalid credentials format" });

@@ -1,0 +1,4 @@
+- [Admin token system](admin-token-system.md) — Root uses fixed token `localmarket-root-token-2026`; DB admins use `localmarket-admin-token-2026:<id>:<role>` format.
+- [Admin role hierarchy](admin-role-hierarchy.md) — Two tiers: root (hardcoded) + admin (DB `admin_users` table). rootAuth middleware rejects non-root tokens.
+- [bcrypt replacement](bcrypt-note.md) — Use `bcryptjs` (pure JS) instead of `bcrypt` (native build blocked by pnpm approve-builds in this env).
+- [Platform modes](platform-modes.md) — Boolean configs stored in `platform_config` table with `group='modes'`, `configType='boolean'`. Served via `/admin/modes` separate from `/admin/config`.

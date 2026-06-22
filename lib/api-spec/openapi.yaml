@@ -646,6 +646,129 @@ paths:
               schema:
                 $ref: "#/components/schemas/PlatformConfig"
 
+  /admin/stats:
+    get:
+      operationId: adminGetStats
+      tags: [admin]
+      summary: Admin - dashboard stats
+      responses:
+        "200":
+          description: Dashboard statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+
+  /admin/users:
+    get:
+      operationId: adminListUsers
+      tags: [admin]
+      summary: Admin - list admin users (root only)
+      responses:
+        "200":
+          description: List of admin users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminUser"
+    post:
+      operationId: adminCreateUser
+      tags: [admin]
+      summary: Admin - create admin user (root only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminUserInput"
+      responses:
+        "201":
+          description: Created admin user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUser"
+
+  /admin/users/{id}:
+    put:
+      operationId: adminUpdateUser
+      tags: [admin]
+      summary: Admin - update admin user (root only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminUserInput"
+      responses:
+        "200":
+          description: Updated admin user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUser"
+    delete:
+      operationId: adminDeleteUser
+      tags: [admin]
+      summary: Admin - delete admin user (root only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /admin/modes:
+    get:
+      operationId: adminGetModes
+      tags: [admin]
+      summary: Admin - get platform modes (boolean toggles)
+      responses:
+        "200":
+          description: Platform modes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlatformMode"
+
+  /admin/modes/{key}:
+    put:
+      operationId: adminUpdateMode
+      tags: [admin]
+      summary: Admin - toggle a platform mode
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlatformModeInput"
+      responses:
+        "200":
+          description: Updated mode
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformMode"
+
   /admin/login:
     post:
       operationId: adminLogin
@@ -956,6 +1079,79 @@ components:
         password:
           type: string
 
+    AdminStats:
+      type: object
+      required: [totalAds, pendingAds, publishedAds, rejectedAds, totalUsers, totalAdmins]
+      properties:
+        totalAds:
+          type: integer
+        pendingAds:
+          type: integer
+        publishedAds:
+          type: integer
+        rejectedAds:
+          type: integer
+        totalUsers:
+          type: integer
+        totalAdmins:
+          type: integer
+
+    AdminUser:
+      type: object
+      required: [id, email, name, role, isActive, createdAt]
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [root, admin]
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+        lastLoginAt:
+          type: ["string", "null"]
+
+    AdminUserInput:
+      type: object
+      required: [email, name, role]
+      properties:
+        email:
+          type: string
+        name:
+          type: string
+        password:
+          type: string
+        role:
+          type: string
+          enum: [root, admin]
+        isActive:
+          type: boolean
+
+    PlatformMode:
+      type: object
+      required: [key, label, enabled]
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        description:
+          type: ["string", "null"]
+        enabled:
+          type: boolean
+
+    PlatformModeInput:
+      type: object
+      required: [enabled]
+      properties:
+        enabled:
+          type: boolean
+
     LoginResult:
       type: object
       required: [success, token]
@@ -964,6 +1160,8 @@ components:
           type: boolean
         token:
           type: string
+        role:
+          type: ["string", "null"]
 
     RegisterInput:
       type: object

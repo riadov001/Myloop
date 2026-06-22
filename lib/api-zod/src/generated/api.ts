@@ -577,6 +577,111 @@ export const AdminUpdateConfigResponse = zod.object({
 
 
 /**
+ * @summary Admin - dashboard stats
+ */
+export const AdminGetStatsResponse = zod.object({
+  "totalAds": zod.number(),
+  "pendingAds": zod.number(),
+  "publishedAds": zod.number(),
+  "rejectedAds": zod.number(),
+  "totalUsers": zod.number(),
+  "totalAdmins": zod.number()
+})
+
+
+/**
+ * @summary Admin - list admin users (root only)
+ */
+export const AdminListUsersResponseItem = zod.object({
+  "id": zod.number(),
+  "email": zod.string(),
+  "name": zod.string(),
+  "role": zod.enum(['root', 'admin']),
+  "isActive": zod.boolean(),
+  "createdAt": zod.string(),
+  "lastLoginAt": zod.string().nullish()
+})
+export const AdminListUsersResponse = zod.array(AdminListUsersResponseItem)
+
+
+/**
+ * @summary Admin - create admin user (root only)
+ */
+export const AdminCreateUserBody = zod.object({
+  "email": zod.string(),
+  "name": zod.string(),
+  "password": zod.string().optional(),
+  "role": zod.enum(['root', 'admin']),
+  "isActive": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Admin - update admin user (root only)
+ */
+export const AdminUpdateUserParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const AdminUpdateUserBody = zod.object({
+  "email": zod.string(),
+  "name": zod.string(),
+  "password": zod.string().optional(),
+  "role": zod.enum(['root', 'admin']),
+  "isActive": zod.boolean().optional()
+})
+
+export const AdminUpdateUserResponse = zod.object({
+  "id": zod.number(),
+  "email": zod.string(),
+  "name": zod.string(),
+  "role": zod.enum(['root', 'admin']),
+  "isActive": zod.boolean(),
+  "createdAt": zod.string(),
+  "lastLoginAt": zod.string().nullish()
+})
+
+
+/**
+ * @summary Admin - delete admin user (root only)
+ */
+export const AdminDeleteUserParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary Admin - get platform modes (boolean toggles)
+ */
+export const AdminGetModesResponseItem = zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "description": zod.string().nullish(),
+  "enabled": zod.boolean()
+})
+export const AdminGetModesResponse = zod.array(AdminGetModesResponseItem)
+
+
+/**
+ * @summary Admin - toggle a platform mode
+ */
+export const AdminUpdateModeParams = zod.object({
+  "key": zod.coerce.string()
+})
+
+export const AdminUpdateModeBody = zod.object({
+  "enabled": zod.boolean()
+})
+
+export const AdminUpdateModeResponse = zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "description": zod.string().nullish(),
+  "enabled": zod.boolean()
+})
+
+
+/**
  * @summary Admin login
  */
 export const AdminLoginBody = zod.object({
@@ -586,7 +691,8 @@ export const AdminLoginBody = zod.object({
 
 export const AdminLoginResponse = zod.object({
   "success": zod.boolean(),
-  "token": zod.string()
+  "token": zod.string(),
+  "role": zod.string().nullish()
 })
 
 

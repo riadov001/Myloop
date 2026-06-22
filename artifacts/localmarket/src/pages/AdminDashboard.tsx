@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
-import { AdminLayout } from "@/components/layout/AdminLayout";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AdminLayout, useAdminRole } from "@/components/layout/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -18,9 +17,15 @@ import {
   useAdminListPromotionPrices, useAdminCreatePromotionPrice, useAdminUpdatePromotionPrice, useAdminDeletePromotionPrice,
   useAdminListPlans, useAdminCreatePlan, useAdminUpdatePlan, useAdminDeletePlan,
   useAdminListConfig, useAdminUpdateConfig,
+  useAdminGetStats, useAdminGetModes, useAdminUpdateMode,
+  useAdminListUsers, useAdminCreateUser, useAdminUpdateUser, useAdminDeleteUser,
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, XCircle, Trash2, Eye, EyeOff, Paintbrush, Loader2, Plus, Pencil, Settings2, Star } from "lucide-react";
+import {
+  CheckCircle2, XCircle, Trash2, Eye, EyeOff, Paintbrush, Loader2, Plus, Pencil,
+  Settings2, Star, Users, Shield, Crown, ToggleLeft, FileText, UserCheck,
+  TrendingUp, Clock, Activity, AlertTriangle,
+} from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -28,7 +33,8 @@ export default function AdminDashboard() {
   const [, setLocation] = useLocation();
   const searchString = useSearch();
   const params = new URLSearchParams(searchString);
-  const activeTab = params.get("tab") || "annonces";
+  const activeTab = params.get("tab") || "overview";
+  const role = useAdminRole();
 
   useEffect(() => {
     if (!localStorage.getItem("adminToken")) {
@@ -36,39 +42,465 @@ export default function AdminDashboard() {
     }
   }, [setLocation]);
 
-  const handleTabChange = (val: string) => {
-    setLocation(`/admin/dashboard?tab=${val}`);
+  return (
+    <AdminLayout>
+      <div className="flex flex-col gap-6 pb-10">
+        {activeTab === "overview" && <OverviewTab />}
+        {activeTab === "annonces" && <AnnoncesTab />}
+        {activeTab === "plans" && <PlansTab />}
+        {activeTab === "modes" && <ModesTab />}
+        {activeTab === "categories" && <CategoriesTab />}
+        {activeTab === "unites" && <UnitesTab />}
+        {activeTab === "tarifs" && <TarifsTab />}
+        {activeTab === "branding" && <BrandingTab />}
+        {activeTab === "settings" && <ParametresTab />}
+        {activeTab === "admins" && role === "root" && <AdminsTab />}
+        {activeTab === "admins" && role !== "root" && (
+          <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-3">
+            <Shield className="h-10 w-10 text-amber-500" />
+            <p className="font-semibold text-lg">Accès réservé au Root Admin</p>
+            <p className="text-sm">Vous devez être connecté en tant que Root Admin pour gérer les comptes administrateurs.</p>
+          </div>
+        )}
+      </div>
+    </AdminLayout>
+  );
+}
+
+function TabHeader({ title, description, action }: { title: string; description?: string; action?: React.ReactNode }) {
+  return (
+    <div className="flex items-start justify-between mb-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
+        {description && <p className="text-muted-foreground mt-1 text-sm">{description}</p>}
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function StatCard({ label, value, sub, icon: Icon, color }: { label: string; value: number | string; sub?: string; icon: React.ElementType; color: string }) {
+  return (
+    <Card className="border-border/50">
+      <CardContent className="p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
+            <p className="text-3xl font-bold text-foreground mt-1">{value}</p>
+            {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
+          </div>
+          <div className={`h-12 w-12 rounded-xl flex items-center justify-center ${color}`}>
+            <Icon className="h-6 w-6" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function OverviewTab() {
+  const { data: stats, isLoading } = useAdminGetStats();
+
+  return (
+    <div className="space-y-6">
+      <TabHeader title="Vue d'ensemble" description="Tableau de bord en temps réel de la plateforme LocalMarket." />
+
+      {isLoading ? (
+        <div className="flex items-center gap-2 text-muted-foreground py-10">
+          <Loader2 className="h-5 w-5 animate-spin" /> Chargement des statistiques...
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <StatCard label="Total annonces" value={stats?.totalAds ?? 0} icon={FileText} color="bg-primary/10 text-primary" />
+            <StatCard label="En attente" value={stats?.pendingAds ?? 0} icon={Clock} color="bg-yellow-500/10 text-yellow-600" />
+            <StatCard label="Publiées" value={stats?.publishedAds ?? 0} icon={CheckCircle2} color="bg-green-500/10 text-green-600" />
+            <StatCard label="Rejetées" value={stats?.rejectedAds ?? 0} icon={XCircle} color="bg-red-500/10 text-red-600" />
+            <StatCard label="Utilisateurs" value={stats?.totalUsers ?? 0} icon={UserCheck} color="bg-blue-500/10 text-blue-600" />
+            <StatCard label="Admins" value={stats?.totalAdmins ?? 0} icon={Shield} color="bg-amber-500/10 text-amber-600" />
+          </div>
+
+          {(stats?.pendingAds ?? 0) > 0 && (
+            <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20 dark:border-yellow-800">
+              <CardContent className="p-4 flex items-center gap-3">
+                <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-400">
+                    {stats?.pendingAds} annonce{(stats?.pendingAds ?? 0) > 1 ? "s" : ""} en attente de validation
+                  </p>
+                  <p className="text-xs text-yellow-700 dark:text-yellow-500 mt-0.5">Des utilisateurs attendent votre approbation.</p>
+                </div>
+                <Button size="sm" variant="outline" className="ml-auto border-yellow-300 text-yellow-700 hover:bg-yellow-100" onClick={() => window.location.href = "/admin/dashboard?tab=annonces"}>
+                  Voir les annonces
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-primary" /> Répartition des annonces
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {stats?.totalAds ? (
+                  <div className="space-y-3">
+                    {[
+                      { label: "Publiées", count: stats.publishedAds, color: "bg-green-500", total: stats.totalAds },
+                      { label: "En attente", count: stats.pendingAds, color: "bg-yellow-500", total: stats.totalAds },
+                      { label: "Rejetées", count: stats.rejectedAds, color: "bg-red-500", total: stats.totalAds },
+                    ].map(({ label, count, color, total }) => (
+                      <div key={label} className="space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <span className="text-muted-foreground">{label}</span>
+                          <span className="font-semibold">{count} ({total ? Math.round(count / total * 100) : 0}%)</span>
+                        </div>
+                        <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                          <div className={`h-full rounded-full ${color} transition-all`} style={{ width: total ? `${count / total * 100}%` : "0%" }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Aucune annonce pour le moment.</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-primary" /> Activité de la plateforme
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                      <span className="text-sm">Plateforme</span>
+                    </div>
+                    <Badge variant="outline" className="text-green-600 border-green-300 bg-green-50 text-xs">En ligne</Badge>
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                    <span className="text-sm text-muted-foreground">Total membres inscrits</span>
+                    <span className="font-bold">{stats?.totalUsers ?? 0}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                    <span className="text-sm text-muted-foreground">Comptes admins actifs</span>
+                    <span className="font-bold">{(stats?.totalAdmins ?? 0) + 1} <span className="text-xs text-muted-foreground">(+root)</span></span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ModesTab() {
+  const { toast } = useToast();
+  const { data: modes, isLoading, refetch } = useAdminGetModes();
+  const updateMode = useAdminUpdateMode();
+  const [saving, setSaving] = useState<Record<string, boolean>>({});
+
+  const handleToggle = (key: string, enabled: boolean) => {
+    setSaving(s => ({ ...s, [key]: true }));
+    updateMode.mutate(
+      { key, data: { enabled } },
+      {
+        onSuccess: () => { toast({ title: "Mode mis à jour." }); refetch(); },
+        onError: () => toast({ title: "Erreur lors de la mise à jour", variant: "destructive" }),
+        onSettled: () => setSaving(s => ({ ...s, [key]: false })),
+      }
+    );
+  };
+
+  const MODE_ICONS: Record<string, React.ElementType> = {
+    maintenance_mode: AlertTriangle,
+    registration_enabled: UserCheck,
+    auto_approve_ads: CheckCircle2,
+    show_contact_email: Eye,
+    allow_donations: Star,
+  };
+
+  const MODE_COLORS: Record<string, string> = {
+    maintenance_mode: "text-red-600",
+    registration_enabled: "text-green-600",
+    auto_approve_ads: "text-blue-600",
+    show_contact_email: "text-purple-600",
+    allow_donations: "text-pink-600",
   };
 
   return (
-    <AdminLayout>
-      <div className="flex flex-col gap-8 pb-10">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Tableau de bord</h1>
-          <p className="text-muted-foreground mt-2">Gérez les annonces et l'identité de LocalMarket.</p>
+    <div className="space-y-6">
+      <TabHeader
+        title="Modes de la plateforme"
+        description="Activez ou désactivez des fonctionnalités globales de la plateforme en temps réel."
+      />
+
+      {isLoading ? (
+        <div className="flex items-center gap-2 text-muted-foreground py-10">
+          <Loader2 className="h-5 w-5 animate-spin" /> Chargement des modes...
         </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {modes?.map(mode => {
+            const Icon = MODE_ICONS[mode.key] ?? ToggleLeft;
+            const colorClass = MODE_COLORS[mode.key] ?? "text-primary";
+            const isWarning = mode.key === "maintenance_mode" && mode.enabled;
+            return (
+              <Card key={mode.key} className={`border-border/50 transition-all ${isWarning ? "border-red-300 bg-red-50/40 dark:bg-red-950/20" : ""}`}>
+                <CardContent className="p-5">
+                  <div className="flex items-start gap-4">
+                    <div className={`h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0 ${colorClass}`}>
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="font-semibold text-sm text-foreground">{mode.label}</h3>
+                        {saving[mode.key] ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        ) : (
+                          <Switch
+                            checked={mode.enabled}
+                            onCheckedChange={(val) => handleToggle(mode.key, val)}
+                          />
+                        )}
+                      </div>
+                      {mode.description && (
+                        <p className="text-xs text-muted-foreground mt-1">{mode.description}</p>
+                      )}
+                      <div className="mt-2">
+                        {mode.enabled ? (
+                          <Badge className="text-[10px] bg-green-100 text-green-700 border-green-200">Actif</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[10px] text-muted-foreground">Inactif</Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  {isWarning && (
+                    <div className="mt-3 p-2 rounded bg-red-100 dark:bg-red-900/30 text-xs text-red-700 dark:text-red-400 flex items-center gap-2">
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                      La plateforme est en mode maintenance — les visiteurs voient une page indisponible.
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="flex w-full flex-wrap gap-0">
-            <TabsTrigger value="annonces" className="flex-1">Annonces</TabsTrigger>
-            <TabsTrigger value="categories" className="flex-1">Catégories</TabsTrigger>
-            <TabsTrigger value="unites" className="flex-1">Unités</TabsTrigger>
-            <TabsTrigger value="tarifs" className="flex-1">Tarifs</TabsTrigger>
-            <TabsTrigger value="plans" className="flex-1">Plans</TabsTrigger>
-            <TabsTrigger value="branding" className="flex-1">Branding</TabsTrigger>
-            <TabsTrigger value="settings" className="flex-1">Paramètres</TabsTrigger>
-          </TabsList>
+function AdminsTab() {
+  const { toast } = useToast();
+  const { data: admins, isLoading, refetch } = useAdminListUsers();
+  const createAdmin = useAdminCreateUser();
+  const updateAdmin = useAdminUpdateUser();
+  const deleteAdmin = useAdminDeleteUser();
 
-          <TabsContent value="annonces" className="mt-6"><AnnoncesTab /></TabsContent>
-          <TabsContent value="categories" className="mt-6"><CategoriesTab /></TabsContent>
-          <TabsContent value="unites" className="mt-6"><UnitesTab /></TabsContent>
-          <TabsContent value="tarifs" className="mt-6"><TarifsTab /></TabsContent>
-          <TabsContent value="plans" className="mt-6"><PlansTab /></TabsContent>
-          <TabsContent value="branding" className="mt-6"><BrandingTab /></TabsContent>
-          <TabsContent value="settings" className="mt-6"><ParametresTab /></TabsContent>
-        </Tabs>
-      </div>
-    </AdminLayout>
+  const emptyForm = { email: "", name: "", password: "", role: "admin" as "root" | "admin", isActive: true };
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState(emptyForm);
+  const [editingId, setEditingId] = useState<number | null>(null);
+
+  const setField = <K extends keyof typeof emptyForm>(k: K, v: typeof emptyForm[K]) =>
+    setForm(f => ({ ...f, [k]: v }));
+
+  const handleCreate = () => {
+    if (!form.email || !form.name || !form.password) return;
+    createAdmin.mutate(
+      { data: { email: form.email, name: form.name, password: form.password, role: form.role, isActive: form.isActive } },
+      {
+        onSuccess: () => {
+          toast({ title: "Administrateur créé." });
+          setForm(emptyForm); setShowForm(false); refetch();
+        },
+        onError: () => toast({ title: "Erreur lors de la création", variant: "destructive" }),
+      }
+    );
+  };
+
+  const startEdit = (a: NonNullable<typeof admins>[number]) => {
+    setEditingId(a.id);
+    setForm({ email: a.email, name: a.name, password: "", role: a.role, isActive: a.isActive });
+    setShowForm(true);
+  };
+
+  const handleUpdate = () => {
+    if (!editingId) return;
+    const payload: Parameters<typeof updateAdmin.mutate>[0]["data"] = {
+      email: form.email, name: form.name, role: form.role, isActive: form.isActive,
+    };
+    if (form.password) payload.password = form.password;
+    updateAdmin.mutate(
+      { id: editingId, data: payload },
+      {
+        onSuccess: () => {
+          toast({ title: "Administrateur mis à jour." });
+          setEditingId(null); setForm(emptyForm); setShowForm(false); refetch();
+        },
+        onError: () => toast({ title: "Erreur lors de la mise à jour", variant: "destructive" }),
+      }
+    );
+  };
+
+  const handleDelete = (id: number) => {
+    if (!confirm("Supprimer cet administrateur ?")) return;
+    deleteAdmin.mutate(
+      { id },
+      {
+        onSuccess: () => { toast({ title: "Administrateur supprimé." }); refetch(); },
+        onError: () => toast({ title: "Erreur lors de la suppression", variant: "destructive" }),
+      }
+    );
+  };
+
+  const cancel = () => { setEditingId(null); setForm(emptyForm); setShowForm(false); };
+
+  return (
+    <div className="space-y-6">
+      <TabHeader
+        title="Gestion des administrateurs"
+        description="Créez et gérez les comptes admin de la plateforme. Réservé au Root Admin."
+        action={
+          <Button onClick={() => { cancel(); setShowForm(true); }} className="gap-2">
+            <Plus className="h-4 w-4" /> Nouvel admin
+          </Button>
+        }
+      />
+
+      {/* Root admin card (non-deletable) */}
+      <Card className="border-amber-200 bg-amber-50/30 dark:bg-amber-950/10 dark:border-amber-800">
+        <CardContent className="p-4 flex items-center gap-4">
+          <div className="h-10 w-10 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+            <Crown className="h-5 w-5 text-amber-500" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="font-semibold text-sm">Root Admin</p>
+              <Badge className="bg-amber-500/20 text-amber-700 border-amber-300 text-[10px]">ROOT</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">admin@localmarket.fr — Compte root hardcodé, toujours actif</p>
+          </div>
+          <Badge variant="outline" className="text-green-600 border-green-300 text-xs shrink-0">Actif</Badge>
+        </CardContent>
+      </Card>
+
+      {showForm && (
+        <Card className="border-primary/20">
+          <CardHeader className="bg-muted/30 border-b pb-4">
+            <CardTitle className="text-base">{editingId ? "Modifier l'administrateur" : "Nouvel administrateur"}</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label>Nom complet *</Label>
+                <Input placeholder="Marie Dupont" value={form.name} onChange={e => setField("name", e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label>Email *</Label>
+                <Input type="email" placeholder="marie@localmarket.fr" value={form.email} onChange={e => setField("email", e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label>{editingId ? "Nouveau mot de passe (laisser vide pour conserver)" : "Mot de passe *"}</Label>
+                <Input type="password" placeholder="Minimum 6 caractères" value={form.password} onChange={e => setField("password", e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label>Rôle</Label>
+                <Select value={form.role} onValueChange={(v: "root" | "admin") => setField("role", v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Administrateur</SelectItem>
+                    <SelectItem value="root">Root Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2 sm:col-span-2">
+                <Switch checked={form.isActive} onCheckedChange={v => setField("isActive", v)} />
+                <Label>Compte actif</Label>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-5">
+              <Button onClick={editingId ? handleUpdate : handleCreate} disabled={createAdmin.isPending || updateAdmin.isPending}>
+                {editingId ? "Enregistrer" : "Créer l'administrateur"}
+              </Button>
+              <Button variant="ghost" onClick={cancel}>Annuler</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card className="border-border/50">
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nom</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Rôle</TableHead>
+                <TableHead>Statut</TableHead>
+                <TableHead>Dernière connexion</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow><TableCell colSpan={6} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin inline" /></TableCell></TableRow>
+              ) : admins?.length ? admins.map(a => (
+                <TableRow key={a.id}>
+                  <TableCell className="font-medium">{a.name}</TableCell>
+                  <TableCell className="text-muted-foreground text-sm">{a.email}</TableCell>
+                  <TableCell>
+                    {a.role === "root" ? (
+                      <Badge className="bg-amber-500/20 text-amber-700 border-amber-300 text-xs gap-1">
+                        <Crown className="h-3 w-3" /> Root
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-xs gap-1">
+                        <Shield className="h-3 w-3" /> Admin
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {a.isActive ? (
+                      <Badge variant="outline" className="text-green-600 border-green-300 text-xs">Actif</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-red-600 border-red-300 text-xs">Inactif</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {a.lastLoginAt ? format(new Date(a.lastLoginAt), "dd MMM yyyy HH:mm", { locale: fr }) : "Jamais"}
+                  </TableCell>
+                  <TableCell className="text-right space-x-2">
+                    <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => startEdit(a)}>
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button size="icon" variant="outline" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(a.id)}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              )) : (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-10 text-muted-foreground text-sm">
+                    Aucun administrateur créé. Cliquez sur "Nouvel admin" pour commencer.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
@@ -118,17 +550,13 @@ function AnnoncesTab() {
   };
 
   return (
-    <Card className="border-primary/10 shadow-md">
-      <CardHeader className="flex flex-row items-center justify-between bg-muted/30 border-b pb-4">
-        <div>
-          <CardTitle>Gestion des annonces</CardTitle>
-          <CardDescription>Validez ou rejetez les annonces soumises par les utilisateurs.</CardDescription>
-        </div>
-        <div className="w-64">
+    <div className="space-y-6">
+      <TabHeader
+        title="Gestion des annonces"
+        description="Validez, rejetez ou supprimez les annonces soumises par les utilisateurs."
+        action={
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="Filtrer par statut" />
-            </SelectTrigger>
+            <SelectTrigger className="w-52"><SelectValue placeholder="Filtrer par statut" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Toutes les annonces</SelectItem>
               <SelectItem value="pending">En attente</SelectItem>
@@ -136,76 +564,67 @@ function AnnoncesTab() {
               <SelectItem value="rejected">Rejetées</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-      </CardHeader>
-      <CardContent className="p-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[80px]">ID</TableHead>
-              <TableHead>Titre</TableHead>
-              <TableHead>Catégorie</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Statut</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
+        }
+      />
+      <Card className="border-border/50">
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
-                  <Loader2 className="h-6 w-6 animate-spin inline mr-2" /> Chargement...
-                </TableCell>
+                <TableHead className="w-[60px]">ID</TableHead>
+                <TableHead>Titre</TableHead>
+                <TableHead>Catégorie</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Statut</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ) : ads?.length ? (
-              ads.map((ad) => (
-                <TableRow key={ad.id}>
-                  <TableCell className="font-mono text-xs">#{ad.id}</TableCell>
-                  <TableCell className="font-medium max-w-[200px] truncate" title={ad.title}>
-                    {ad.isPromoted && <Badge className="mr-1 bg-amber-500 text-white text-[10px]">Sponsorisé</Badge>}
-                    {ad.title}
-                  </TableCell>
-                  <TableCell><Badge variant="secondary" className="text-xs">{ad.category}</Badge></TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {ad.listingType === "free" ? "Don" : ad.listingType === "fixed" ? "Prix fixe" : "Prix libre"}
-                    {ad.price && ` — ${ad.price}€`}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {format(new Date(ad.createdAt), "dd MMM yyyy", { locale: fr })}
-                  </TableCell>
-                  <TableCell>{getStatusBadge(ad.status)}</TableCell>
-                  <TableCell className="text-right space-x-2">
-                    {ad.status === 'pending' && (
-                      <>
-                        <Button size="icon" variant="outline" className="h-8 w-8 text-green-600 border-green-200 hover:bg-green-50" onClick={() => handleStatusChange(ad.id, 'published')} title="Valider">
-                          <CheckCircle2 className="h-4 w-4" />
-                        </Button>
-                        <Button size="icon" variant="outline" className="h-8 w-8 text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleStatusChange(ad.id, 'rejected')} title="Rejeter">
-                          <XCircle className="h-4 w-4" />
-                        </Button>
-                      </>
-                    )}
-                    <Button size="icon" variant="outline" className="h-8 w-8 text-muted-foreground" title="Voir">
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button size="icon" variant="outline" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(ad.id)} title="Supprimer">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
-                  Aucune annonce trouvée.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow><TableCell colSpan={7} className="text-center py-10"><Loader2 className="h-6 w-6 animate-spin inline mr-2" /> Chargement...</TableCell></TableRow>
+              ) : ads?.length ? (
+                ads.map((ad) => (
+                  <TableRow key={ad.id}>
+                    <TableCell className="font-mono text-xs text-muted-foreground">#{ad.id}</TableCell>
+                    <TableCell className="font-medium max-w-[180px] truncate" title={ad.title}>
+                      {ad.isPromoted && <Badge className="mr-1 bg-amber-500 text-white text-[10px]">Sponsorisé</Badge>}
+                      {ad.title}
+                    </TableCell>
+                    <TableCell><Badge variant="secondary" className="text-xs">{ad.category}</Badge></TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {ad.listingType === "free" ? "Don" : ad.listingType === "fixed" ? "Prix fixe" : "Prix libre"}
+                      {ad.price && ` — ${ad.price}€`}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {format(new Date(ad.createdAt), "dd MMM yyyy", { locale: fr })}
+                    </TableCell>
+                    <TableCell>{getStatusBadge(ad.status)}</TableCell>
+                    <TableCell className="text-right space-x-1">
+                      {ad.status === 'pending' && (
+                        <>
+                          <Button size="icon" variant="outline" className="h-8 w-8 text-green-600 border-green-200 hover:bg-green-50" onClick={() => handleStatusChange(ad.id, 'published')} title="Valider">
+                            <CheckCircle2 className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon" variant="outline" className="h-8 w-8 text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleStatusChange(ad.id, 'rejected')} title="Rejeter">
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                      <Button size="icon" variant="outline" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(ad.id)} title="Supprimer">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow><TableCell colSpan={7} className="text-center py-10 text-muted-foreground">Aucune annonce trouvée.</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
@@ -215,7 +634,6 @@ function CategoriesTab() {
   const createCategory = useAdminCreateCategory();
   const updateCategory = useAdminUpdateCategory();
   const deleteCategory = useAdminDeleteCategory();
-
   const [editingId, setEditingId] = useState<number | null>(null);
   const [newName, setNewName] = useState("");
   const [newSlug, setNewSlug] = useState("");
@@ -245,106 +663,64 @@ function CategoriesTab() {
   };
 
   const handleToggleActive = (cat: { id: number; name: string; slug: string; active: boolean }) => {
-    updateCategory.mutate(
-      { id: cat.id, data: { name: cat.name, slug: cat.slug, active: !cat.active } },
-      {
-        onSuccess: () => { refetch(); },
-        onError: () => toast({ title: "Erreur", variant: "destructive" })
-      }
-    );
+    updateCategory.mutate({ id: cat.id, data: { name: cat.name, slug: cat.slug, active: !cat.active } }, { onSuccess: () => refetch() });
   };
 
   const handleDelete = (id: number) => {
     if (confirm("Supprimer cette catégorie ?")) {
-      deleteCategory.mutate(
-        { id },
-        {
-          onSuccess: () => { toast({ title: "Catégorie supprimée." }); refetch(); },
-          onError: () => toast({ title: "Erreur", variant: "destructive" })
-        }
-      );
+      deleteCategory.mutate({ id }, { onSuccess: () => { toast({ title: "Catégorie supprimée." }); refetch(); } });
     }
   };
 
   return (
-    <Card className="border-primary/10 shadow-md">
-      <CardHeader className="bg-muted/30 border-b pb-4">
-        <CardTitle>Gestion des catégories</CardTitle>
-        <CardDescription>Créez, modifiez, activez ou désactivez les catégories d'annonces.</CardDescription>
-      </CardHeader>
-      <CardContent className="pt-6 space-y-6">
-        <div className="flex gap-3">
-          <Input
-            placeholder="Nom de la catégorie"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            className="flex-1"
-            onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-          />
-          <Input
-            placeholder="Slug (auto)"
-            value={newSlug}
-            onChange={(e) => setNewSlug(e.target.value)}
-            className="w-40"
-          />
-          <Button onClick={handleCreate} disabled={createCategory.isPending}>
-            <Plus className="h-4 w-4 mr-1" /> Ajouter
-          </Button>
-        </div>
-
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nom</TableHead>
-              <TableHead>Slug</TableHead>
-              <TableHead>Actif</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow><TableCell colSpan={4} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin inline" /></TableCell></TableRow>
-            ) : categories?.map((cat) => (
-              <TableRow key={cat.id}>
-                <TableCell>
-                  {editingId === cat.id ? (
-                    <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="h-8" />
-                  ) : cat.name}
-                </TableCell>
-                <TableCell className="text-muted-foreground text-sm">
-                  {editingId === cat.id ? (
-                    <Input value={editSlug} onChange={(e) => setEditSlug(e.target.value)} className="h-8" />
-                  ) : cat.slug}
-                </TableCell>
-                <TableCell>
-                  <Switch
-                    checked={cat.active}
-                    onCheckedChange={() => handleToggleActive(cat)}
-                  />
-                </TableCell>
-                <TableCell className="text-right space-x-2">
-                  {editingId === cat.id ? (
-                    <>
-                      <Button size="sm" onClick={() => handleUpdate(cat.id)} disabled={updateCategory.isPending}>Enregistrer</Button>
-                      <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>Annuler</Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => { setEditingId(cat.id); setEditName(cat.name); setEditSlug(cat.slug); }}>
-                        <Pencil className="h-3 w-3" />
-                      </Button>
-                      <Button size="icon" variant="outline" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(cat.id)}>
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </>
-                  )}
-                </TableCell>
+    <div className="space-y-6">
+      <TabHeader title="Catégories d'annonces" description="Gérez les catégories disponibles dans les formulaires." />
+      <Card className="border-border/50">
+        <CardHeader className="bg-muted/30 border-b pb-4">
+          <div className="flex gap-3">
+            <Input placeholder="Nom de la catégorie" value={newName} onChange={(e) => setNewName(e.target.value)} className="flex-1" onKeyDown={(e) => e.key === "Enter" && handleCreate()} />
+            <Input placeholder="Slug (auto)" value={newSlug} onChange={(e) => setNewSlug(e.target.value)} className="w-36" />
+            <Button onClick={handleCreate} disabled={createCategory.isPending}><Plus className="h-4 w-4 mr-1" /> Ajouter</Button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nom</TableHead>
+                <TableHead>Slug</TableHead>
+                <TableHead>Actif</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow><TableCell colSpan={4} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin inline" /></TableCell></TableRow>
+              ) : categories?.map((cat) => (
+                <TableRow key={cat.id}>
+                  <TableCell>{editingId === cat.id ? <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="h-8" /> : cat.name}</TableCell>
+                  <TableCell className="text-muted-foreground text-sm">{editingId === cat.id ? <Input value={editSlug} onChange={(e) => setEditSlug(e.target.value)} className="h-8" /> : cat.slug}</TableCell>
+                  <TableCell><Switch checked={cat.active} onCheckedChange={() => handleToggleActive(cat)} /></TableCell>
+                  <TableCell className="text-right space-x-2">
+                    {editingId === cat.id ? (
+                      <>
+                        <Button size="sm" onClick={() => handleUpdate(cat.id)} disabled={updateCategory.isPending}>Enregistrer</Button>
+                        <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>Annuler</Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => { setEditingId(cat.id); setEditName(cat.name); setEditSlug(cat.slug); }}><Pencil className="h-3 w-3" /></Button>
+                        <Button size="icon" variant="outline" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(cat.id)}><Trash2 className="h-3 w-3" /></Button>
+                      </>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
@@ -354,7 +730,6 @@ function UnitesTab() {
   const createUnit = useAdminCreateUnit();
   const updateUnit = useAdminUpdateUnit();
   const deleteUnit = useAdminDeleteUnit();
-
   const [editingId, setEditingId] = useState<number | null>(null);
   const [newName, setNewName] = useState("");
   const [newSymbol, setNewSymbol] = useState("");
@@ -363,126 +738,78 @@ function UnitesTab() {
 
   const handleCreate = () => {
     if (!newName.trim() || !newSymbol.trim()) return;
-    createUnit.mutate(
-      { data: { name: newName.trim(), symbol: newSymbol.trim(), active: true } },
-      {
-        onSuccess: () => { toast({ title: "Unité créée." }); setNewName(""); setNewSymbol(""); refetch(); },
-        onError: () => toast({ title: "Erreur", variant: "destructive" })
-      }
-    );
+    createUnit.mutate({ data: { name: newName.trim(), symbol: newSymbol.trim(), active: true } }, {
+      onSuccess: () => { toast({ title: "Unité créée." }); setNewName(""); setNewSymbol(""); refetch(); },
+      onError: () => toast({ title: "Erreur", variant: "destructive" })
+    });
   };
 
   const handleUpdate = (id: number) => {
-    updateUnit.mutate(
-      { id, data: { name: editName, symbol: editSymbol, active: true } },
-      {
-        onSuccess: () => { toast({ title: "Unité mise à jour." }); setEditingId(null); refetch(); },
-        onError: () => toast({ title: "Erreur", variant: "destructive" })
-      }
-    );
+    updateUnit.mutate({ id, data: { name: editName, symbol: editSymbol, active: true } }, {
+      onSuccess: () => { toast({ title: "Unité mise à jour." }); setEditingId(null); refetch(); },
+      onError: () => toast({ title: "Erreur", variant: "destructive" })
+    });
   };
 
-  const handleToggleActive = (unit: { id: number; name: string; symbol: string; active: boolean }) => {
-    updateUnit.mutate(
-      { id: unit.id, data: { name: unit.name, symbol: unit.symbol, active: !unit.active } },
-      {
-        onSuccess: () => { refetch(); },
-        onError: () => toast({ title: "Erreur", variant: "destructive" })
-      }
-    );
+  const handleToggleActive = (u: { id: number; name: string; symbol: string; active: boolean }) => {
+    updateUnit.mutate({ id: u.id, data: { name: u.name, symbol: u.symbol, active: !u.active } }, { onSuccess: () => refetch() });
   };
 
   const handleDelete = (id: number) => {
     if (confirm("Supprimer cette unité ?")) {
-      deleteUnit.mutate(
-        { id },
-        {
-          onSuccess: () => { toast({ title: "Unité supprimée." }); refetch(); },
-          onError: () => toast({ title: "Erreur", variant: "destructive" })
-        }
-      );
+      deleteUnit.mutate({ id }, { onSuccess: () => { toast({ title: "Unité supprimée." }); refetch(); } });
     }
   };
 
   return (
-    <Card className="border-primary/10 shadow-md">
-      <CardHeader className="bg-muted/30 border-b pb-4">
-        <CardTitle>Gestion des unités de mesure</CardTitle>
-        <CardDescription>Gérez les unités disponibles dans les formulaires d'annonces.</CardDescription>
-      </CardHeader>
-      <CardContent className="pt-6 space-y-6">
-        <div className="flex gap-3">
-          <Input
-            placeholder="Nom (ex: Kilogramme)"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            className="flex-1"
-            onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-          />
-          <Input
-            placeholder="Symbole (ex: kg)"
-            value={newSymbol}
-            onChange={(e) => setNewSymbol(e.target.value)}
-            className="w-36"
-          />
-          <Button onClick={handleCreate} disabled={createUnit.isPending}>
-            <Plus className="h-4 w-4 mr-1" /> Ajouter
-          </Button>
-        </div>
-
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nom</TableHead>
-              <TableHead>Symbole</TableHead>
-              <TableHead>Actif</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow><TableCell colSpan={4} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin inline" /></TableCell></TableRow>
-            ) : units?.map((unit) => (
-              <TableRow key={unit.id}>
-                <TableCell>
-                  {editingId === unit.id ? (
-                    <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="h-8" />
-                  ) : unit.name}
-                </TableCell>
-                <TableCell className="font-mono text-sm">
-                  {editingId === unit.id ? (
-                    <Input value={editSymbol} onChange={(e) => setEditSymbol(e.target.value)} className="h-8 w-24" />
-                  ) : unit.symbol}
-                </TableCell>
-                <TableCell>
-                  <Switch
-                    checked={unit.active}
-                    onCheckedChange={() => handleToggleActive(unit)}
-                  />
-                </TableCell>
-                <TableCell className="text-right space-x-2">
-                  {editingId === unit.id ? (
-                    <>
-                      <Button size="sm" onClick={() => handleUpdate(unit.id)} disabled={updateUnit.isPending}>Enregistrer</Button>
-                      <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>Annuler</Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => { setEditingId(unit.id); setEditName(unit.name); setEditSymbol(unit.symbol); }}>
-                        <Pencil className="h-3 w-3" />
-                      </Button>
-                      <Button size="icon" variant="outline" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(unit.id)}>
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </>
-                  )}
-                </TableCell>
+    <div className="space-y-6">
+      <TabHeader title="Unités de mesure" description="Gérez les unités disponibles dans les formulaires d'annonces." />
+      <Card className="border-border/50">
+        <CardHeader className="bg-muted/30 border-b pb-4">
+          <div className="flex gap-3">
+            <Input placeholder="Nom (ex: Kilogramme)" value={newName} onChange={(e) => setNewName(e.target.value)} className="flex-1" onKeyDown={(e) => e.key === "Enter" && handleCreate()} />
+            <Input placeholder="Symbole (ex: kg)" value={newSymbol} onChange={(e) => setNewSymbol(e.target.value)} className="w-36" />
+            <Button onClick={handleCreate} disabled={createUnit.isPending}><Plus className="h-4 w-4 mr-1" /> Ajouter</Button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nom</TableHead>
+                <TableHead>Symbole</TableHead>
+                <TableHead>Actif</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow><TableCell colSpan={4} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin inline" /></TableCell></TableRow>
+              ) : units?.map((unit) => (
+                <TableRow key={unit.id}>
+                  <TableCell>{editingId === unit.id ? <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="h-8" /> : unit.name}</TableCell>
+                  <TableCell className="font-mono text-sm">{editingId === unit.id ? <Input value={editSymbol} onChange={(e) => setEditSymbol(e.target.value)} className="h-8 w-24" /> : unit.symbol}</TableCell>
+                  <TableCell><Switch checked={unit.active} onCheckedChange={() => handleToggleActive(unit)} /></TableCell>
+                  <TableCell className="text-right space-x-2">
+                    {editingId === unit.id ? (
+                      <>
+                        <Button size="sm" onClick={() => handleUpdate(unit.id)} disabled={updateUnit.isPending}>Enregistrer</Button>
+                        <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>Annuler</Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => { setEditingId(unit.id); setEditName(unit.name); setEditSymbol(unit.symbol); }}><Pencil className="h-3 w-3" /></Button>
+                        <Button size="icon" variant="outline" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(unit.id)}><Trash2 className="h-3 w-3" /></Button>
+                      </>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
@@ -492,7 +819,6 @@ function TarifsTab() {
   const createPrice = useAdminCreatePromotionPrice();
   const updatePrice = useAdminUpdatePromotionPrice();
   const deletePrice = useAdminDeletePromotionPrice();
-
   const [editingId, setEditingId] = useState<number | null>(null);
   const [newDuration, setNewDuration] = useState("");
   const [newLabel, setNewLabel] = useState("");
@@ -503,141 +829,81 @@ function TarifsTab() {
 
   const handleCreate = () => {
     if (!newLabel.trim() || !newPrice.trim() || !newDuration) return;
-    createPrice.mutate(
-      { data: { duration: Number(newDuration), label: newLabel.trim(), price: newPrice.trim(), active: true } },
-      {
-        onSuccess: () => {
-          toast({ title: "Tarif créé." });
-          setNewDuration(""); setNewLabel(""); setNewPrice("");
-          refetch();
-        },
-        onError: () => toast({ title: "Erreur", variant: "destructive" })
-      }
-    );
+    createPrice.mutate({ data: { duration: Number(newDuration), label: newLabel.trim(), price: newPrice.trim(), active: true } }, {
+      onSuccess: () => { toast({ title: "Tarif créé." }); setNewDuration(""); setNewLabel(""); setNewPrice(""); refetch(); },
+      onError: () => toast({ title: "Erreur", variant: "destructive" })
+    });
   };
 
   const handleUpdate = (id: number) => {
-    updatePrice.mutate(
-      { id, data: { duration: Number(editDuration), label: editLabel, price: editPrice, active: true } },
-      {
-        onSuccess: () => { toast({ title: "Tarif mis à jour." }); setEditingId(null); refetch(); },
-        onError: () => toast({ title: "Erreur", variant: "destructive" })
-      }
-    );
+    updatePrice.mutate({ id, data: { duration: Number(editDuration), label: editLabel, price: editPrice, active: true } }, {
+      onSuccess: () => { toast({ title: "Tarif mis à jour." }); setEditingId(null); refetch(); },
+      onError: () => toast({ title: "Erreur", variant: "destructive" })
+    });
   };
 
   const handleToggleActive = (p: { id: number; duration: number; label: string; price: string; active: boolean }) => {
-    updatePrice.mutate(
-      { id: p.id, data: { duration: p.duration, label: p.label, price: p.price, active: !p.active } },
-      {
-        onSuccess: () => { refetch(); },
-        onError: () => toast({ title: "Erreur", variant: "destructive" })
-      }
-    );
+    updatePrice.mutate({ id: p.id, data: { duration: p.duration, label: p.label, price: p.price, active: !p.active } }, { onSuccess: () => refetch() });
   };
 
   const handleDelete = (id: number) => {
     if (confirm("Supprimer ce tarif ?")) {
-      deletePrice.mutate(
-        { id },
-        {
-          onSuccess: () => { toast({ title: "Tarif supprimé." }); refetch(); },
-          onError: () => toast({ title: "Erreur", variant: "destructive" })
-        }
-      );
+      deletePrice.mutate({ id }, { onSuccess: () => { toast({ title: "Tarif supprimé." }); refetch(); } });
     }
   };
 
   return (
-    <Card className="border-primary/10 shadow-md">
-      <CardHeader className="bg-muted/30 border-b pb-4">
-        <CardTitle>Tarifs de mise en avant</CardTitle>
-        <CardDescription>Gérez les tarifs publicitaires pour la mise en avant des annonces. Ces tarifs s'affichent directement dans le formulaire de dépôt.</CardDescription>
-      </CardHeader>
-      <CardContent className="pt-6 space-y-6">
-        <div className="flex gap-3 flex-wrap">
-          <Input
-            placeholder="Durée (jours)"
-            type="number"
-            value={newDuration}
-            onChange={(e) => setNewDuration(e.target.value)}
-            className="w-32"
-          />
-          <Input
-            placeholder="Libellé (ex: 7 jours)"
-            value={newLabel}
-            onChange={(e) => setNewLabel(e.target.value)}
-            className="flex-1 min-w-[140px]"
-          />
-          <Input
-            placeholder="Prix (ex: 9.90)"
-            type="number"
-            step="0.01"
-            value={newPrice}
-            onChange={(e) => setNewPrice(e.target.value)}
-            className="w-32"
-          />
-          <Button onClick={handleCreate} disabled={createPrice.isPending}>
-            <Plus className="h-4 w-4 mr-1" /> Ajouter
-          </Button>
-        </div>
-
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Durée</TableHead>
-              <TableHead>Libellé</TableHead>
-              <TableHead>Prix (€)</TableHead>
-              <TableHead>Actif</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow><TableCell colSpan={5} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin inline" /></TableCell></TableRow>
-            ) : prices?.map((p) => (
-              <TableRow key={p.id}>
-                <TableCell>
-                  {editingId === p.id ? (
-                    <Input type="number" value={editDuration} onChange={(e) => setEditDuration(e.target.value)} className="h-8 w-24" />
-                  ) : `${p.duration} jours`}
-                </TableCell>
-                <TableCell>
-                  {editingId === p.id ? (
-                    <Input value={editLabel} onChange={(e) => setEditLabel(e.target.value)} className="h-8" />
-                  ) : p.label}
-                </TableCell>
-                <TableCell className="font-semibold text-primary">
-                  {editingId === p.id ? (
-                    <Input type="number" step="0.01" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} className="h-8 w-28" />
-                  ) : `${p.price} €`}
-                </TableCell>
-                <TableCell>
-                  <Switch checked={p.active} onCheckedChange={() => handleToggleActive(p)} />
-                </TableCell>
-                <TableCell className="text-right space-x-2">
-                  {editingId === p.id ? (
-                    <>
-                      <Button size="sm" onClick={() => handleUpdate(p.id)} disabled={updatePrice.isPending}>Enregistrer</Button>
-                      <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>Annuler</Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => { setEditingId(p.id); setEditDuration(String(p.duration)); setEditLabel(p.label); setEditPrice(p.price); }}>
-                        <Pencil className="h-3 w-3" />
-                      </Button>
-                      <Button size="icon" variant="outline" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(p.id)}>
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </>
-                  )}
-                </TableCell>
+    <div className="space-y-6">
+      <TabHeader title="Tarifs de mise en avant" description="Gérez les tarifs publicitaires pour la mise en avant des annonces." />
+      <Card className="border-border/50">
+        <CardHeader className="bg-muted/30 border-b pb-4">
+          <div className="flex gap-3 flex-wrap">
+            <Input placeholder="Durée (jours)" type="number" value={newDuration} onChange={(e) => setNewDuration(e.target.value)} className="w-32" />
+            <Input placeholder="Libellé (ex: 7 jours)" value={newLabel} onChange={(e) => setNewLabel(e.target.value)} className="flex-1 min-w-[140px]" />
+            <Input placeholder="Prix (ex: 9.90)" type="number" step="0.01" value={newPrice} onChange={(e) => setNewPrice(e.target.value)} className="w-32" />
+            <Button onClick={handleCreate} disabled={createPrice.isPending}><Plus className="h-4 w-4 mr-1" /> Ajouter</Button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Durée</TableHead>
+                <TableHead>Libellé</TableHead>
+                <TableHead>Prix (€)</TableHead>
+                <TableHead>Actif</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow><TableCell colSpan={5} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin inline" /></TableCell></TableRow>
+              ) : prices?.map((p) => (
+                <TableRow key={p.id}>
+                  <TableCell>{editingId === p.id ? <Input type="number" value={editDuration} onChange={(e) => setEditDuration(e.target.value)} className="h-8 w-24" /> : `${p.duration} jours`}</TableCell>
+                  <TableCell>{editingId === p.id ? <Input value={editLabel} onChange={(e) => setEditLabel(e.target.value)} className="h-8" /> : p.label}</TableCell>
+                  <TableCell className="font-semibold text-primary">{editingId === p.id ? <Input type="number" step="0.01" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} className="h-8 w-28" /> : `${p.price} €`}</TableCell>
+                  <TableCell><Switch checked={p.active} onCheckedChange={() => handleToggleActive(p)} /></TableCell>
+                  <TableCell className="text-right space-x-2">
+                    {editingId === p.id ? (
+                      <>
+                        <Button size="sm" onClick={() => handleUpdate(p.id)} disabled={updatePrice.isPending}>Enregistrer</Button>
+                        <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>Annuler</Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => { setEditingId(p.id); setEditDuration(String(p.duration)); setEditLabel(p.label); setEditPrice(p.price); }}><Pencil className="h-3 w-3" /></Button>
+                        <Button size="icon" variant="outline" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(p.id)}><Trash2 className="h-3 w-3" /></Button>
+                      </>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
@@ -669,123 +935,102 @@ function PlansTab() {
 
   const handleCreate = () => {
     if (!form.name.trim()) return;
-    createPlan.mutate(
-      { data: toPayload() },
-      {
-        onSuccess: () => { toast({ title: "Plan créé." }); setForm(emptyForm); setShowForm(false); refetch(); },
-        onError: () => toast({ title: "Erreur", variant: "destructive" }),
-      }
-    );
+    createPlan.mutate({ data: toPayload() }, {
+      onSuccess: () => { toast({ title: "Plan créé." }); setForm(emptyForm); setShowForm(false); refetch(); },
+      onError: () => toast({ title: "Erreur", variant: "destructive" }),
+    });
   };
 
   const startEdit = (p: NonNullable<typeof plans>[number]) => {
     setEditingId(p.id);
-    setForm({
-      name: p.name,
-      slug: p.slug,
-      description: p.description ?? "",
-      priceMonthly: p.priceMonthly,
-      priceAnnual: p.priceAnnual ?? "",
-      maxAds: p.maxAds != null ? String(p.maxAds) : "",
-      featuresText: (p.features as string[]).join("\n"),
-      isActive: p.isActive,
-      sortOrder: String(p.sortOrder),
-    });
+    setForm({ name: p.name, slug: p.slug, description: p.description ?? "", priceMonthly: p.priceMonthly, priceAnnual: p.priceAnnual ?? "", maxAds: p.maxAds != null ? String(p.maxAds) : "", featuresText: (p.features as string[]).join("\n"), isActive: p.isActive, sortOrder: String(p.sortOrder) });
     setShowForm(true);
   };
 
   const handleUpdate = () => {
     if (!editingId) return;
-    updatePlan.mutate(
-      { id: editingId, data: toPayload() },
-      {
-        onSuccess: () => { toast({ title: "Plan mis à jour." }); setEditingId(null); setForm(emptyForm); setShowForm(false); refetch(); },
-        onError: () => toast({ title: "Erreur", variant: "destructive" }),
-      }
-    );
+    updatePlan.mutate({ id: editingId, data: toPayload() }, {
+      onSuccess: () => { toast({ title: "Plan mis à jour." }); setEditingId(null); setForm(emptyForm); setShowForm(false); refetch(); },
+      onError: () => toast({ title: "Erreur", variant: "destructive" }),
+    });
   };
 
   const handleDelete = (id: number) => {
     if (!confirm("Supprimer ce plan ?")) return;
-    deletePlan.mutate(
-      { id },
-      {
-        onSuccess: () => { toast({ title: "Plan supprimé." }); refetch(); },
-        onError: () => toast({ title: "Erreur", variant: "destructive" }),
-      }
-    );
+    deletePlan.mutate({ id }, { onSuccess: () => { toast({ title: "Plan supprimé." }); refetch(); } });
   };
 
   const cancel = () => { setEditingId(null); setForm(emptyForm); setShowForm(false); };
 
   return (
     <div className="space-y-6">
-      <Card className="border-primary/10 shadow-md">
-        <CardHeader className="bg-muted/30 border-b pb-4 flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Gestion des plans</CardTitle>
-            <CardDescription>Créez et gérez les offres d'abonnement de la plateforme (Economy, Max, etc.).</CardDescription>
-          </div>
-          <Button onClick={() => { cancel(); setShowForm(true); }}>
-            <Plus className="h-4 w-4 mr-1" /> Nouveau plan
-          </Button>
-        </CardHeader>
-        <CardContent className="pt-6">
-          {showForm && (
-            <div className="mb-6 p-5 border rounded-lg bg-muted/20 space-y-4">
-              <h3 className="font-semibold text-base">{editingId ? "Modifier le plan" : "Créer un plan"}</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Label>Nom du plan *</Label>
-                  <Input placeholder="ex: Max" value={form.name} onChange={e => setField("name", e.target.value)} />
-                </div>
-                <div className="space-y-1">
-                  <Label>Slug (auto)</Label>
-                  <Input placeholder="ex: max" value={form.slug} onChange={e => setField("slug", e.target.value)} />
-                </div>
-                <div className="space-y-1">
-                  <Label>Prix mensuel (€) *</Label>
-                  <Input type="number" step="0.01" placeholder="0" value={form.priceMonthly} onChange={e => setField("priceMonthly", e.target.value)} />
-                </div>
-                <div className="space-y-1">
-                  <Label>Prix annuel (€)</Label>
-                  <Input type="number" step="0.01" placeholder="Optionnel" value={form.priceAnnual} onChange={e => setField("priceAnnual", e.target.value)} />
-                </div>
-                <div className="space-y-1">
-                  <Label>Limite d'annonces</Label>
-                  <Input type="number" placeholder="Illimité si vide" value={form.maxAds} onChange={e => setField("maxAds", e.target.value)} />
-                </div>
-                <div className="space-y-1">
-                  <Label>Ordre d'affichage</Label>
-                  <Input type="number" value={form.sortOrder} onChange={e => setField("sortOrder", e.target.value)} />
-                </div>
-                <div className="space-y-1 sm:col-span-2">
-                  <Label>Description</Label>
-                  <Input placeholder="Brève description du plan" value={form.description} onChange={e => setField("description", e.target.value)} />
-                </div>
-                <div className="space-y-1 sm:col-span-2">
-                  <Label>Fonctionnalités incluses <span className="text-muted-foreground text-xs">(une par ligne)</span></Label>
-                  <textarea
-                    className="w-full min-h-[100px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    placeholder={"Annonces illimitées\nMise en avant prioritaire\nSupport prioritaire"}
-                    value={form.featuresText}
-                    onChange={e => setField("featuresText", e.target.value)}
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <Switch checked={form.isActive} onCheckedChange={v => setField("isActive", v)} />
-                  <Label>Plan actif</Label>
-                </div>
+      <TabHeader
+        title="Plans & Abonnements"
+        description="Créez et gérez les offres d'abonnement affichées sur la page publique /tarifs."
+        action={<Button onClick={() => { cancel(); setShowForm(true); }} className="gap-2"><Plus className="h-4 w-4" /> Nouveau plan</Button>}
+      />
+
+      {showForm && (
+        <Card className="border-primary/20">
+          <CardHeader className="bg-muted/30 border-b pb-4">
+            <CardTitle className="text-base">{editingId ? "Modifier le plan" : "Créer un nouveau plan"}</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label>Nom du plan *</Label>
+                <Input placeholder="ex: Max" value={form.name} onChange={e => setField("name", e.target.value)} />
               </div>
-              <div className="flex gap-2 pt-2">
-                <Button onClick={editingId ? handleUpdate : handleCreate} disabled={createPlan.isPending || updatePlan.isPending}>
-                  {editingId ? "Enregistrer les modifications" : "Créer le plan"}
-                </Button>
-                <Button variant="ghost" onClick={cancel}>Annuler</Button>
+              <div className="space-y-1">
+                <Label>Slug</Label>
+                <Input placeholder="ex: max (auto)" value={form.slug} onChange={e => setField("slug", e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label>Prix mensuel (€) *</Label>
+                <Input type="number" step="0.01" placeholder="0" value={form.priceMonthly} onChange={e => setField("priceMonthly", e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label>Prix annuel (€)</Label>
+                <Input type="number" step="0.01" placeholder="Optionnel" value={form.priceAnnual} onChange={e => setField("priceAnnual", e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label>Limite d'annonces</Label>
+                <Input type="number" placeholder="Illimité si vide" value={form.maxAds} onChange={e => setField("maxAds", e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label>Ordre d'affichage</Label>
+                <Input type="number" value={form.sortOrder} onChange={e => setField("sortOrder", e.target.value)} />
+              </div>
+              <div className="space-y-1 sm:col-span-2">
+                <Label>Description</Label>
+                <Input placeholder="Brève description du plan" value={form.description} onChange={e => setField("description", e.target.value)} />
+              </div>
+              <div className="space-y-1 sm:col-span-2">
+                <Label>Fonctionnalités <span className="text-muted-foreground text-xs">(une par ligne)</span></Label>
+                <textarea
+                  className="w-full min-h-[100px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  placeholder={"Annonces illimitées\nMise en avant prioritaire\nSupport prioritaire"}
+                  value={form.featuresText}
+                  onChange={e => setField("featuresText", e.target.value)}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch checked={form.isActive} onCheckedChange={v => setField("isActive", v)} />
+                <Label>Plan actif (visible sur /tarifs)</Label>
               </div>
             </div>
-          )}
+            <div className="flex gap-2 mt-5">
+              <Button onClick={editingId ? handleUpdate : handleCreate} disabled={createPlan.isPending || updatePlan.isPending}>
+                {editingId ? "Enregistrer les modifications" : "Créer le plan"}
+              </Button>
+              <Button variant="ghost" onClick={cancel}>Annuler</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
+      <Card className="border-border/50">
+        <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
@@ -793,7 +1038,7 @@ function PlansTab() {
                 <TableHead>Nom</TableHead>
                 <TableHead>Prix mensuel</TableHead>
                 <TableHead>Prix annuel</TableHead>
-                <TableHead>Limite annonces</TableHead>
+                <TableHead>Limite</TableHead>
                 <TableHead>Fonctionnalités</TableHead>
                 <TableHead>Actif</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -807,22 +1052,17 @@ function PlansTab() {
                   <TableCell className="text-muted-foreground text-sm">{p.sortOrder}</TableCell>
                   <TableCell>
                     <div className="font-semibold flex items-center gap-1">
-                      <Star className="h-3 w-3 text-amber-500" />
-                      {p.name}
+                      <Star className="h-3 w-3 text-amber-500" /> {p.name}
                     </div>
                     {p.description && <div className="text-xs text-muted-foreground">{p.description}</div>}
                   </TableCell>
-                  <TableCell className="font-semibold text-primary">{p.priceMonthly} €/mois</TableCell>
+                  <TableCell className="font-semibold text-primary">{Number(p.priceMonthly) === 0 ? "Gratuit" : `${p.priceMonthly} €/mois`}</TableCell>
                   <TableCell className="text-muted-foreground text-sm">{p.priceAnnual ? `${p.priceAnnual} €/an` : "—"}</TableCell>
                   <TableCell className="text-sm">{p.maxAds != null ? `${p.maxAds} annonces` : "Illimité"}</TableCell>
                   <TableCell>
-                    <div className="flex flex-wrap gap-1 max-w-[200px]">
-                      {(p.features as string[]).slice(0, 3).map((f, i) => (
-                        <Badge key={i} variant="secondary" className="text-[10px]">{f}</Badge>
-                      ))}
-                      {(p.features as string[]).length > 3 && (
-                        <Badge variant="outline" className="text-[10px]">+{(p.features as string[]).length - 3}</Badge>
-                      )}
+                    <div className="flex flex-wrap gap-1 max-w-[180px]">
+                      {(p.features as string[]).slice(0, 2).map((f, i) => <Badge key={i} variant="secondary" className="text-[10px]">{f}</Badge>)}
+                      {(p.features as string[]).length > 2 && <Badge variant="outline" className="text-[10px]">+{(p.features as string[]).length - 2}</Badge>}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -831,20 +1071,12 @@ function PlansTab() {
                     }} />
                   </TableCell>
                   <TableCell className="text-right space-x-2">
-                    <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => startEdit(p)}>
-                      <Pencil className="h-3 w-3" />
-                    </Button>
-                    <Button size="icon" variant="outline" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(p.id)}>
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+                    <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => startEdit(p)}><Pencil className="h-3 w-3" /></Button>
+                    <Button size="icon" variant="outline" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(p.id)}><Trash2 className="h-3 w-3" /></Button>
                   </TableCell>
                 </TableRow>
               )) : (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
-                    Aucun plan configuré. Cliquez sur "Nouveau plan" pour commencer.
-                  </TableCell>
-                </TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center py-10 text-muted-foreground">Aucun plan configuré. Cliquez sur "Nouveau plan" pour commencer.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
@@ -875,10 +1107,7 @@ function ParametresTab() {
     updateConfig.mutate(
       { key, data: { value: values[key] ?? "" } },
       {
-        onSuccess: () => {
-          toast({ title: "Configuration sauvegardée." });
-          refetch();
-        },
+        onSuccess: () => { toast({ title: "Configuration sauvegardée." }); refetch(); },
         onError: () => toast({ title: "Erreur lors de la sauvegarde", variant: "destructive" }),
         onSettled: () => setSaving(s => ({ ...s, [key]: false })),
       }
@@ -889,9 +1118,7 @@ function ParametresTab() {
   const secretConfigs = configs?.filter(c => c.isSecret) ?? [];
   const publicConfigs = configs?.filter(c => !c.isSecret) ?? [];
 
-  if (isLoading) {
-    return <div className="flex items-center gap-2 text-muted-foreground py-10"><Loader2 className="h-5 w-5 animate-spin" /> Chargement...</div>;
-  }
+  if (isLoading) return <div className="flex items-center gap-2 text-muted-foreground py-10"><Loader2 className="h-5 w-5 animate-spin" /> Chargement...</div>;
 
   const renderConfigRow = (c: NonNullable<typeof configs>[number]) => {
     const isSecret = c.isSecret;
@@ -903,11 +1130,7 @@ function ParametresTab() {
             <Label className="text-sm font-semibold">{c.label}</Label>
             {c.description && <p className="text-xs text-muted-foreground mt-0.5">{c.description}</p>}
           </div>
-          {isSecret && (
-            <Badge variant="outline" className="text-[10px] text-amber-700 border-amber-300 bg-amber-50">
-              Secret
-            </Badge>
-          )}
+          {isSecret && <Badge variant="outline" className="text-[10px] text-amber-700 border-amber-300 bg-amber-50">Secret</Badge>}
         </div>
         <div className="flex gap-2">
           <div className="relative flex-1">
@@ -919,72 +1142,44 @@ function ParametresTab() {
               className="pr-10 font-mono text-sm"
             />
             {isSecret && (
-              <button
-                type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                onClick={() => setVisible(v => ({ ...v, [c.key]: !v[c.key] }))}
-                tabIndex={-1}
-                title={showClear ? "Masquer" : "Afficher"}
-              >
+              <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors" onClick={() => setVisible(v => ({ ...v, [c.key]: !v[c.key] }))} tabIndex={-1}>
                 {showClear ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             )}
           </div>
-          <Button
-            size="sm"
-            onClick={() => handleSave(c.key, isSecret)}
-            disabled={saving[c.key]}
-            className="shrink-0"
-          >
+          <Button size="sm" onClick={() => handleSave(c.key, isSecret)} disabled={saving[c.key]} className="shrink-0">
             {saving[c.key] ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sauvegarder"}
           </Button>
         </div>
-        {isSecret && c.value && (
-          <p className="text-xs text-green-600 flex items-center gap-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-green-500 inline-block" />
-            Clé configurée — laissez vide ou saisissez une nouvelle valeur pour remplacer
-          </p>
-        )}
-        {isSecret && !c.value && (
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-gray-400 inline-block" />
-            Non configuré
-          </p>
-        )}
+        {isSecret && c.value && <p className="text-xs text-green-600 flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-green-500 inline-block" /> Clé configurée</p>}
+        {isSecret && !c.value && <p className="text-xs text-muted-foreground flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-gray-400 inline-block" /> Non configuré</p>}
       </div>
     );
   };
 
   return (
     <div className="space-y-8">
-      <Card className="border-primary/10 shadow-md">
+      <TabHeader title="Paramètres" description="Configurez les intégrations et les paramètres globaux de la plateforme." />
+      <Card className="border-border/50">
         <CardHeader className="bg-muted/30 border-b pb-4">
           <div className="flex items-center gap-2">
             <Settings2 className="h-5 w-5 text-primary" />
             <CardTitle>Clés API et intégrations</CardTitle>
           </div>
-          <CardDescription>
-            Les clés secrètes sont masquées et ne sont jamais affichées en clair. Saisissez une nouvelle valeur pour remplacer une clé existante.
-          </CardDescription>
+          <CardDescription>Les clés secrètes sont masquées. Saisissez une nouvelle valeur pour remplacer.</CardDescription>
         </CardHeader>
         <CardContent className="pt-6 space-y-4">
-          {secretConfigs.length === 0 && !isLoading && (
-            <p className="text-muted-foreground text-sm">Aucune clé secrète configurée.</p>
-          )}
-          {secretConfigs.map(renderConfigRow)}
+          {secretConfigs.length === 0 ? <p className="text-muted-foreground text-sm">Aucune clé secrète configurée.</p> : secretConfigs.map(renderConfigRow)}
         </CardContent>
       </Card>
 
-      <Card className="border-primary/10 shadow-md">
+      <Card className="border-border/50">
         <CardHeader className="bg-muted/30 border-b pb-4">
           <CardTitle>Paramètres généraux</CardTitle>
           <CardDescription>Configurez les paramètres publics de la plateforme.</CardDescription>
         </CardHeader>
         <CardContent className="pt-6 space-y-4">
-          {publicConfigs.length === 0 && !isLoading && (
-            <p className="text-muted-foreground text-sm">Aucun paramètre à configurer.</p>
-          )}
-          {publicConfigs.map(renderConfigRow)}
+          {publicConfigs.length === 0 ? <p className="text-muted-foreground text-sm">Aucun paramètre à configurer.</p> : publicConfigs.map(renderConfigRow)}
         </CardContent>
       </Card>
     </div>
@@ -995,135 +1190,94 @@ function BrandingTab() {
   const { data: branding, isLoading } = useGetBranding();
   const updateBranding = useUpdateBranding();
   const { toast } = useToast();
-
-  const [formState, setFormState] = useState({
-    siteName: "",
-    primaryColor: "",
-    accentColor: "",
-    backgroundColor: "",
-    fontFamily: "",
-    logoUrl: ""
-  });
+  const [formState, setFormState] = useState({ siteName: "", primaryColor: "", accentColor: "", backgroundColor: "", fontFamily: "", logoUrl: "" });
 
   useEffect(() => {
     if (branding) {
-      setFormState({
-        siteName: branding.siteName || "LocalMarket",
-        primaryColor: branding.primaryColor || "#2563eb",
-        accentColor: branding.accentColor || "#eab308",
-        backgroundColor: branding.backgroundColor || "#ffffff",
-        fontFamily: branding.fontFamily || "Inter",
-        logoUrl: branding.logoUrl || ""
-      });
+      setFormState({ siteName: branding.siteName || "LocalMarket", primaryColor: branding.primaryColor || "#2563eb", accentColor: branding.accentColor || "#1d4ed8", backgroundColor: branding.backgroundColor || "#ffffff", fontFamily: branding.fontFamily || "Inter", logoUrl: branding.logoUrl || "" });
     }
   }, [branding]);
 
   const handleSave = () => {
-    updateBranding.mutate(
-      { data: formState },
-      {
-        onSuccess: () => {
-          toast({ title: "Branding mis à jour", description: "Les modifications ont été sauvegardées." });
-        },
-        onError: () => toast({ title: "Erreur", variant: "destructive" })
-      }
-    );
+    updateBranding.mutate({ data: formState }, {
+      onSuccess: () => toast({ title: "Branding mis à jour." }),
+      onError: () => toast({ title: "Erreur", variant: "destructive" })
+    });
   };
 
-  if (isLoading) return <div>Chargement...</div>;
+  if (isLoading) return <div className="flex items-center gap-2 text-muted-foreground py-10"><Loader2 className="h-5 w-5 animate-spin" /> Chargement...</div>;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      <Card>
-        <CardHeader>
-          <CardTitle>Éditeur de marque</CardTitle>
-          <CardDescription>Personnalisez l'apparence globale de la plateforme.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Label>Nom du site</Label>
-            <Input value={formState.siteName} onChange={(e) => setFormState({ ...formState, siteName: e.target.value })} />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Logo URL</Label>
-            <Input placeholder="https://..." value={formState.logoUrl} onChange={(e) => setFormState({ ...formState, logoUrl: e.target.value })} />
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
+    <div className="space-y-6">
+      <TabHeader title="Branding & Identité visuelle" description="Personnalisez l'apparence globale de la plateforme LocalMarket." />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <Card className="border-border/50">
+          <CardHeader className="bg-muted/30 border-b pb-4">
+            <CardTitle>Éditeur de marque</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6 space-y-6">
             <div className="space-y-2">
-              <Label>Couleur Primaire</Label>
-              <div className="flex gap-2">
-                <Input type="color" className="w-12 p-1 h-10 cursor-pointer" value={formState.primaryColor} onChange={(e) => setFormState({ ...formState, primaryColor: e.target.value })} />
-                <Input value={formState.primaryColor} onChange={(e) => setFormState({ ...formState, primaryColor: e.target.value })} className="font-mono" />
-              </div>
+              <Label>Nom du site</Label>
+              <Input value={formState.siteName} onChange={(e) => setFormState({ ...formState, siteName: e.target.value })} />
             </div>
             <div className="space-y-2">
-              <Label>Couleur d'Accent</Label>
-              <div className="flex gap-2">
-                <Input type="color" className="w-12 p-1 h-10 cursor-pointer" value={formState.accentColor} onChange={(e) => setFormState({ ...formState, accentColor: e.target.value })} />
-                <Input value={formState.accentColor} onChange={(e) => setFormState({ ...formState, accentColor: e.target.value })} className="font-mono" />
-              </div>
+              <Label>URL du logo</Label>
+              <Input placeholder="https://..." value={formState.logoUrl} onChange={(e) => setFormState({ ...formState, logoUrl: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              {[
+                { label: "Couleur Primaire", key: "primaryColor" as const },
+                { label: "Couleur d'Accent", key: "accentColor" as const },
+                { label: "Fond", key: "backgroundColor" as const },
+              ].map(({ label, key }) => (
+                <div key={key} className="space-y-2">
+                  <Label className="text-xs">{label}</Label>
+                  <div className="flex gap-1">
+                    <Input type="color" className="w-10 p-1 h-9 cursor-pointer shrink-0" value={formState[key]} onChange={(e) => setFormState({ ...formState, [key]: e.target.value })} />
+                    <Input value={formState[key]} onChange={(e) => setFormState({ ...formState, [key]: e.target.value })} className="font-mono text-xs" />
+                  </div>
+                </div>
+              ))}
             </div>
             <div className="space-y-2">
-              <Label>Couleur de Fond</Label>
-              <div className="flex gap-2">
-                <Input type="color" className="w-12 p-1 h-10 cursor-pointer" value={formState.backgroundColor} onChange={(e) => setFormState({ ...formState, backgroundColor: e.target.value })} />
-                <Input value={formState.backgroundColor} onChange={(e) => setFormState({ ...formState, backgroundColor: e.target.value })} className="font-mono" />
-              </div>
+              <Label>Police de caractères</Label>
+              <Select value={formState.fontFamily} onValueChange={(v) => setFormState({ ...formState, fontFamily: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Inter">Inter (Sans-serif Moderne)</SelectItem>
+                  <SelectItem value="Roboto">Roboto (Clair & Lisible)</SelectItem>
+                  <SelectItem value="Poppins">Poppins (Arrondi & Convivial)</SelectItem>
+                  <SelectItem value="Lato">Lato (Chaleureux)</SelectItem>
+                  <SelectItem value="Montserrat">Montserrat (Élégant)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Police de caractères</Label>
-            <Select value={formState.fontFamily} onValueChange={(v) => setFormState({ ...formState, fontFamily: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Inter">Inter (Sans-serif Moderne)</SelectItem>
-                <SelectItem value="Roboto">Roboto (Clair & Lisible)</SelectItem>
-                <SelectItem value="Poppins">Poppins (Arrondi & Convivial)</SelectItem>
-                <SelectItem value="Lato">Lato (Chaleureux)</SelectItem>
-                <SelectItem value="Montserrat">Montserrat (Élégant)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Button onClick={handleSave} disabled={updateBranding.isPending} className="w-full">
-            <Paintbrush className="h-4 w-4 mr-2" /> Appliquer le nouveau style
-          </Button>
-        </CardContent>
-      </Card>
-
-      <div className="space-y-4">
-        <h3 className="font-semibold text-lg">Aperçu en direct</h3>
-        <Card className="overflow-hidden border-2 shadow-xl" style={{ backgroundColor: formState.backgroundColor, fontFamily: formState.fontFamily }}>
-          <div className="h-14 border-b flex items-center px-4 justify-between" style={{ backgroundColor: '#ffffff' }}>
-            <div className="flex items-center gap-2 font-bold text-lg" style={{ color: formState.primaryColor }}>
-              {formState.logoUrl ? (
-                <img src={formState.logoUrl} alt="Logo" className="h-8" />
-              ) : (
-                <div className="h-8 w-8 rounded flex items-center justify-center text-white" style={{ backgroundColor: formState.primaryColor }}>LM</div>
-              )}
-              {formState.siteName}
-            </div>
-            <div className="flex gap-3">
-              <div className="h-2 w-16 bg-muted rounded-full"></div>
-              <div className="h-2 w-16 bg-muted rounded-full"></div>
-            </div>
-          </div>
-          <div className="p-8">
-            <div className="max-w-md space-y-6">
-              <h2 className="text-3xl font-bold" style={{ color: '#1e293b' }}>
-                Bienvenue sur <span style={{ color: formState.primaryColor }}>{formState.siteName}</span>
-              </h2>
-              <p style={{ color: '#64748b' }}>Aperçu de la typographie et des couleurs sélectionnées.</p>
-              <div className="flex gap-4">
-                <Button style={{ backgroundColor: formState.primaryColor, color: '#ffffff' }}>Action principale</Button>
-                <Button variant="outline" style={{ borderColor: formState.accentColor, color: formState.accentColor }}>Action secondaire</Button>
-              </div>
-            </div>
-          </div>
+            <Button onClick={handleSave} disabled={updateBranding.isPending} className="w-full">
+              <Paintbrush className="h-4 w-4 mr-2" /> Appliquer le nouveau style
+            </Button>
+          </CardContent>
         </Card>
+
+        <div className="space-y-4">
+          <h3 className="font-semibold">Aperçu en direct</h3>
+          <Card className="overflow-hidden border-2 shadow-xl" style={{ backgroundColor: formState.backgroundColor, fontFamily: formState.fontFamily }}>
+            <div className="h-12 border-b flex items-center px-4 justify-between bg-white">
+              <div className="flex items-center gap-2 font-bold" style={{ color: formState.primaryColor }}>
+                {formState.logoUrl ? <img src={formState.logoUrl} alt="Logo" className="h-7" /> : <div className="h-7 w-7 rounded flex items-center justify-center text-white text-xs" style={{ backgroundColor: formState.primaryColor }}>LM</div>}
+                {formState.siteName}
+              </div>
+              <div className="flex gap-2"><div className="h-2 w-12 bg-muted rounded-full" /><div className="h-2 w-12 bg-muted rounded-full" /></div>
+            </div>
+            <div className="p-6 space-y-4">
+              <h2 className="text-2xl font-bold" style={{ color: '#1e293b' }}>Bienvenue sur <span style={{ color: formState.primaryColor }}>{formState.siteName}</span></h2>
+              <p style={{ color: '#64748b' }} className="text-sm">Aperçu de la typographie et des couleurs.</p>
+              <div className="flex gap-3">
+                <Button style={{ backgroundColor: formState.primaryColor, color: '#ffffff' }} size="sm">Action principale</Button>
+                <Button variant="outline" style={{ borderColor: formState.accentColor, color: formState.accentColor }} size="sm">Secondaire</Button>
+              </div>
+            </div>
+          </Card>
+        </div>
       </div>
     </div>
   );

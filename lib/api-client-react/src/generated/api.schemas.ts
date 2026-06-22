@@ -223,9 +223,67 @@ export interface AdminCredentials {
   password: string;
 }
 
+export interface AdminStats {
+  totalAds: number;
+  pendingAds: number;
+  publishedAds: number;
+  rejectedAds: number;
+  totalUsers: number;
+  totalAdmins: number;
+}
+
+export type AdminUserRole = typeof AdminUserRole[keyof typeof AdminUserRole];
+
+
+export const AdminUserRole = {
+  root: 'root',
+  admin: 'admin',
+} as const;
+
+export interface AdminUser {
+  id: number;
+  email: string;
+  name: string;
+  role: AdminUserRole;
+  isActive: boolean;
+  createdAt: string;
+  /** @nullable */
+  lastLoginAt?: string | null;
+}
+
+export type AdminUserInputRole = typeof AdminUserInputRole[keyof typeof AdminUserInputRole];
+
+
+export const AdminUserInputRole = {
+  root: 'root',
+  admin: 'admin',
+} as const;
+
+export interface AdminUserInput {
+  email: string;
+  name: string;
+  password?: string;
+  role: AdminUserInputRole;
+  isActive?: boolean;
+}
+
+export interface PlatformMode {
+  key: string;
+  label: string;
+  /** @nullable */
+  description?: string | null;
+  enabled: boolean;
+}
+
+export interface PlatformModeInput {
+  enabled: boolean;
+}
+
 export interface LoginResult {
   success: boolean;
   token: string;
+  /** @nullable */
+  role?: string | null;
 }
 
 export interface RegisterInput {

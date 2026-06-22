@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, platformConfigTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, ne } from "drizzle-orm";
 import { adminAuth } from "../middleware/adminAuth";
 import { z } from "zod/v4";
 
@@ -19,16 +19,18 @@ function maskConfig(row: typeof platformConfigTable.$inferSelect) {
     isSecret: row.isSecret,
     label: row.label,
     description: row.description ?? null,
+    configType: row.configType,
+    group: row.group,
   };
 }
 
 const DEFAULT_CONFIG = [
-  { key: "stripe_api_key", label: "Clé API Stripe", description: "Clé secrète Stripe (sk_...)", isSecret: true },
-  { key: "stripe_webhook_secret", label: "Secret Webhook Stripe", description: "Secret de validation des webhooks Stripe (whsec_...)", isSecret: true },
-  { key: "resend_api_key", label: "Clé API Resend", description: "Clé API pour l'envoi d'emails via Resend", isSecret: true },
-  { key: "from_email", label: "Email expéditeur", description: "Adresse email utilisée pour les envois (ex: noreply@localmarket.fr)", isSecret: false },
-  { key: "contact_email", label: "Email de contact", description: "Email affiché pour le support / contact", isSecret: false },
-  { key: "site_url", label: "URL du site", description: "URL publique de la plateforme (ex: https://localmarket.fr)", isSecret: false },
+  { key: "stripe_api_key", label: "Clé API Stripe", description: "Clé secrète Stripe (sk_...)", isSecret: true, configType: "secret" as const, group: "integrations" },
+  { key: "stripe_webhook_secret", label: "Secret Webhook Stripe", description: "Secret de validation des webhooks Stripe (whsec_...)", isSecret: true, configType: "secret" as const, group: "integrations" },
+  { key: "resend_api_key", label: "Clé API Resend", description: "Clé API pour l'envoi d'emails via Resend", isSecret: true, configType: "secret" as const, group: "integrations" },
+  { key: "from_email", label: "Email expéditeur", description: "Adresse email utilisée pour les envois (ex: noreply@localmarket.fr)", isSecret: false, configType: "string" as const, group: "general" },
+  { key: "contact_email", label: "Email de contact", description: "Email affiché pour le support / contact", isSecret: false, configType: "string" as const, group: "general" },
+  { key: "site_url", label: "URL du site", description: "URL publique de la plateforme (ex: https://localmarket.fr)", isSecret: false, configType: "string" as const, group: "general" },
 ];
 
 async function ensureDefaults() {
@@ -37,16 +39,20 @@ async function ensureDefaults() {
   const toInsert = DEFAULT_CONFIG.filter(c => !existingKeys.has(c.key));
   if (toInsert.length > 0) {
     await db.insert(platformConfigTable).values(
-      toInsert.map(c => ({ key: c.key, label: c.label, description: c.description, isSecret: c.isSecret, value: null }))
+      toInsert.map(c => ({ key: c.key, label: c.label, description: c.description, isSecret: c.isSecret, configType: c.configType, group: c.group, value: null }))
     );
   }
 }
 
-// GET /admin/config
+// GET /admin/config — returns non-mode configs only
 router.get("/admin/config", adminAuth, async (req, res) => {
   try {
     await ensureDefaults();
-    const rows = await db.select().from(platformConfigTable).orderBy(platformConfigTable.key);
+    const rows = await db
+      .select()
+      .from(platformConfigTable)
+      .where(ne(platformConfigTable.group, "modes"))
+      .orderBy(platformConfigTable.key);
     res.json(rows.map(maskConfig));
   } catch (err) {
     req.log.error(err);
@@ -70,7 +76,6 @@ router.put("/admin/config/:key", adminAuth, async (req, res) => {
       return;
     }
 
-    // If the submitted value is the mask, don't update — keep existing secret
     const newValue = (existing.isSecret && value === MASK) ? existing.value : value;
 
     const [updated] = await db

@@ -6,9 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface LoginResult {
-  success: boolean;
-  token: string;
+export interface PlatformMode {
+  key: string;
+  label: string;
   /** @nullable */
-  role?: string | null;
+  description?: string | null;
+  enabled: boolean;
 }

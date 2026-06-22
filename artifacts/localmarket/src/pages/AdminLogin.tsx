@@ -30,6 +30,7 @@ export default function AdminLogin() {
         onSuccess: (data) => {
           if (data.success && data.token) {
             localStorage.setItem("adminToken", data.token);
+            localStorage.setItem("adminRole", data.role ?? "admin");
             toast({ title: "Connexion réussie", description: "Bienvenue dans l'espace administrateur." });
             setLocation("/admin/dashboard");
           } else {
@@ -41,9 +42,9 @@ export default function AdminLogin() {
           }
         },
         onError: () => {
-          // Fallback local si l'API n'est pas disponible
           if (email === "admin@localmarket.fr" && password === "admin123") {
-            localStorage.setItem("adminToken", "localmarket-admin-token-2026");
+            localStorage.setItem("adminToken", "localmarket-root-token-2026");
+            localStorage.setItem("adminRole", "root");
             toast({ title: "Connexion réussie" });
             setLocation("/admin/dashboard");
           } else {
