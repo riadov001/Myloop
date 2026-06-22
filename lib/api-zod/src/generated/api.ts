@@ -215,6 +215,19 @@ export const DeleteAdParams = zod.object({
 
 
 /**
+ * @summary Admin - bulk approve / reject / delete ads
+ */
+export const AdminBulkUpdateAdsBody = zod.object({
+  "ids": zod.array(zod.number()),
+  "action": zod.enum(['publish', 'reject', 'delete'])
+})
+
+export const AdminBulkUpdateAdsResponse = zod.object({
+  "affected": zod.number()
+})
+
+
+/**
  * @summary Get current branding settings
  */
 export const GetBrandingResponse = zod.object({

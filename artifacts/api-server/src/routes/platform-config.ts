@@ -25,12 +25,31 @@ function maskConfig(row: typeof platformConfigTable.$inferSelect) {
 }
 
 const DEFAULT_CONFIG = [
+  // Identité
+  { key: "site_name", label: "Nom du site", description: "Nom affiché dans le titre et le footer", isSecret: false, configType: "string" as const, group: "identite" },
+  { key: "site_tagline", label: "Accroche / Slogan", description: "Phrase d'accroche affichée sur la page d'accueil", isSecret: false, configType: "string" as const, group: "identite" },
+  { key: "site_url", label: "URL du site", description: "URL publique de la plateforme (ex: https://localmarket.fr)", isSecret: false, configType: "string" as const, group: "identite" },
+  { key: "contact_email", label: "Email de contact", description: "Email affiché pour le support / contact", isSecret: false, configType: "string" as const, group: "identite" },
+  { key: "from_email", label: "Email expéditeur", description: "Adresse email utilisée pour les envois (ex: noreply@localmarket.fr)", isSecret: false, configType: "string" as const, group: "identite" },
+  { key: "footer_address", label: "Adresse (footer)", description: "Adresse physique ou région affichée dans le pied de page", isSecret: false, configType: "string" as const, group: "identite" },
+  // SEO
+  { key: "seo_title", label: "Titre SEO", description: "Titre de la page pour les moteurs de recherche (<title>)", isSecret: false, configType: "string" as const, group: "seo" },
+  { key: "seo_description", label: "Meta Description SEO", description: "Description courte pour Google (150-160 caractères recommandés)", isSecret: false, configType: "string" as const, group: "seo" },
+  { key: "seo_keywords", label: "Mots-clés SEO", description: "Mots-clés séparés par des virgules", isSecret: false, configType: "string" as const, group: "seo" },
+  { key: "og_image_url", label: "Image Open Graph", description: "URL de l'image partagée sur les réseaux sociaux (1200x630 px)", isSecret: false, configType: "string" as const, group: "seo" },
+  // Réseaux sociaux
+  { key: "facebook_url", label: "Facebook", description: "URL complète de la page Facebook", isSecret: false, configType: "string" as const, group: "socials" },
+  { key: "instagram_url", label: "Instagram", description: "URL du profil Instagram", isSecret: false, configType: "string" as const, group: "socials" },
+  { key: "twitter_url", label: "Twitter / X", description: "URL du profil Twitter/X", isSecret: false, configType: "string" as const, group: "socials" },
+  { key: "whatsapp_number", label: "WhatsApp", description: "Numéro WhatsApp au format international (ex: +33612345678)", isSecret: false, configType: "string" as const, group: "socials" },
+  { key: "youtube_url", label: "YouTube", description: "URL de la chaîne YouTube", isSecret: false, configType: "string" as const, group: "socials" },
+  // Maintenance
+  { key: "maintenance_message", label: "Message de maintenance", description: "Texte affiché aux visiteurs quand le mode maintenance est actif", isSecret: false, configType: "string" as const, group: "maintenance" },
+  // Intégrations
   { key: "stripe_api_key", label: "Clé API Stripe", description: "Clé secrète Stripe (sk_...)", isSecret: true, configType: "secret" as const, group: "integrations" },
   { key: "stripe_webhook_secret", label: "Secret Webhook Stripe", description: "Secret de validation des webhooks Stripe (whsec_...)", isSecret: true, configType: "secret" as const, group: "integrations" },
   { key: "resend_api_key", label: "Clé API Resend", description: "Clé API pour l'envoi d'emails via Resend", isSecret: true, configType: "secret" as const, group: "integrations" },
-  { key: "from_email", label: "Email expéditeur", description: "Adresse email utilisée pour les envois (ex: noreply@localmarket.fr)", isSecret: false, configType: "string" as const, group: "general" },
-  { key: "contact_email", label: "Email de contact", description: "Email affiché pour le support / contact", isSecret: false, configType: "string" as const, group: "general" },
-  { key: "site_url", label: "URL du site", description: "URL publique de la plateforme (ex: https://localmarket.fr)", isSecret: false, configType: "string" as const, group: "general" },
+  { key: "google_analytics_id", label: "Google Analytics ID", description: "Identifiant de suivi Google Analytics (ex: G-XXXXXXXXXX)", isSecret: false, configType: "string" as const, group: "integrations" },
 ];
 
 async function ensureDefaults() {

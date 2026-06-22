@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "mOFoDSx7M4rUi02F9Vmvg"
+uri = "file://deployment/hostinger/GUIDE.md"
+type = "text"
+title = "Guide Déploiement Hostinger — LocalMarket"

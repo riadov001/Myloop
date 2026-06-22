@@ -30,6 +30,8 @@ import type {
   AdminUserInput,
   AuthResult,
   Branding,
+  BulkAdAction,
+  BulkResult,
   Category,
   CategoryInput,
   HealthStatus,
@@ -827,6 +829,77 @@ export const useDeleteAd = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getDeleteAdMutationOptions(options));
+    }
+
+export const getAdminBulkUpdateAdsUrl = () => {
+
+
+
+
+  return `/api/admin/ads/bulk`
+}
+
+/**
+ * @summary Admin - bulk approve / reject / delete ads
+ */
+export const adminBulkUpdateAds = async (bulkAdAction: BulkAdAction, options?: RequestInit): Promise<BulkResult> => {
+
+  return customFetch<BulkResult>(getAdminBulkUpdateAdsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      bulkAdAction,)
+  }
+);}
+
+
+
+
+export const getAdminBulkUpdateAdsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminBulkUpdateAds>>, TError,{data: BodyType<BulkAdAction>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminBulkUpdateAds>>, TError,{data: BodyType<BulkAdAction>}, TContext> => {
+
+const mutationKey = ['adminBulkUpdateAds'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminBulkUpdateAds>>, {data: BodyType<BulkAdAction>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  adminBulkUpdateAds(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminBulkUpdateAdsMutationResult = NonNullable<Awaited<ReturnType<typeof adminBulkUpdateAds>>>
+    export type AdminBulkUpdateAdsMutationBody = BodyType<BulkAdAction>
+    export type AdminBulkUpdateAdsMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Admin - bulk approve / reject / delete ads
+ */
+export const useAdminBulkUpdateAds = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminBulkUpdateAds>>, TError,{data: BodyType<BulkAdAction>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminBulkUpdateAds>>,
+        TError,
+        {data: BodyType<BulkAdAction>},
+        TContext
+      > => {
+      return useMutation(getAdminBulkUpdateAdsMutationOptions(options));
     }
 
 export const getGetBrandingUrl = () => {

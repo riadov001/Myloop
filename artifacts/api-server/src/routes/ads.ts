@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, adsTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import {
   ListAdsQueryParams,
   CreateAdBody,
@@ -11,6 +11,12 @@ import {
   DeleteAdParams,
 } from "@workspace/api-zod";
 import { adminAuth } from "../middleware/adminAuth";
+import { z } from "zod/v4";
+
+const BulkAdActionSchema = z.object({
+  ids: z.array(z.number().int().positive()).min(1),
+  action: z.enum(["publish", "reject", "delete"]),
+});
 
 const router = Router();
 
@@ -160,6 +166,39 @@ router.delete("/admin/ads/:id", adminAuth, async (req, res) => {
   } catch (err) {
     req.log.error(err);
     res.status(400).json({ error: "Invalid id" });
+  }
+});
+
+// POST /admin/ads/bulk — bulk approve / reject / delete — PROTECTED
+router.post("/admin/ads/bulk", adminAuth, async (req, res) => {
+  try {
+    const { ids, action } = BulkAdActionSchema.parse(req.body);
+    let affected = 0;
+    if (action === "publish") {
+      const rows = await db
+        .update(adsTable)
+        .set({ status: "published" })
+        .where(inArray(adsTable.id, ids))
+        .returning({ id: adsTable.id });
+      affected = rows.length;
+    } else if (action === "reject") {
+      const rows = await db
+        .update(adsTable)
+        .set({ status: "rejected" })
+        .where(inArray(adsTable.id, ids))
+        .returning({ id: adsTable.id });
+      affected = rows.length;
+    } else if (action === "delete") {
+      const rows = await db
+        .delete(adsTable)
+        .where(inArray(adsTable.id, ids))
+        .returning({ id: adsTable.id });
+      affected = rows.length;
+    }
+    res.json({ affected });
+  } catch (err) {
+    req.log.error(err);
+    res.status(400).json({ error: "Données invalides" });
   }
 });
 

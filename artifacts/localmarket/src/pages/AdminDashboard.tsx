@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
-  useAdminListAds, useUpdateAdStatus, useDeleteAd,
+  useAdminListAds, useUpdateAdStatus, useDeleteAd, useAdminBulkUpdateAds,
   useGetBranding, useUpdateBranding,
   useAdminListCategories, useAdminCreateCategory, useAdminUpdateCategory, useAdminDeleteCategory,
   useAdminListUnits, useAdminCreateUnit, useAdminUpdateUnit, useAdminDeleteUnit,
@@ -24,7 +24,8 @@ import { useToast } from "@/hooks/use-toast";
 import {
   CheckCircle2, XCircle, Trash2, Eye, EyeOff, Paintbrush, Loader2, Plus, Pencil,
   Settings2, Star, Users, Shield, Crown, ToggleLeft, FileText, UserCheck,
-  TrendingUp, Clock, Activity, AlertTriangle,
+  TrendingUp, Clock, Activity, AlertTriangle, CheckSquare, Square, Globe, Hash,
+  Share2, Wrench, Key, ChevronDown, ChevronRight,
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -506,6 +507,7 @@ function AdminsTab() {
 
 function AnnoncesTab() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [selected, setSelected] = useState<Set<number>>(new Set());
   const { toast } = useToast();
 
   const { data: ads, isLoading, refetch } = useAdminListAds({
@@ -514,6 +516,46 @@ function AnnoncesTab() {
 
   const updateStatus = useUpdateAdStatus();
   const deleteAd = useDeleteAd();
+  const bulkUpdate = useAdminBulkUpdateAds();
+
+  const allIds = (ads ?? []).map(a => a.id);
+  const allSelected = allIds.length > 0 && allIds.every(id => selected.has(id));
+  const someSelected = selected.size > 0;
+
+  const toggleAll = () => {
+    if (allSelected) setSelected(new Set());
+    else setSelected(new Set(allIds));
+  };
+
+  const toggleOne = (id: number) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulk = (action: "publish" | "reject" | "delete") => {
+    const ids = [...selected];
+    if (!ids.length) return;
+    const msg = action === "delete"
+      ? `Supprimer ${ids.length} annonce(s) définitivement ?`
+      : action === "reject"
+      ? `Rejeter ${ids.length} annonce(s) ?`
+      : null;
+    if (msg && !confirm(msg)) return;
+    bulkUpdate.mutate(
+      { data: { ids, action } },
+      {
+        onSuccess: (res) => {
+          toast({ title: `${res.affected} annonce(s) ${action === "publish" ? "publiée(s)" : action === "reject" ? "rejetée(s)" : "supprimée(s)"}.` });
+          setSelected(new Set());
+          refetch();
+        },
+        onError: () => toast({ title: "Erreur lors de l'action groupée", variant: "destructive" })
+      }
+    );
+  };
 
   const handleStatusChange = (id: number, status: 'published' | 'rejected') => {
     updateStatus.mutate(
@@ -550,12 +592,12 @@ function AnnoncesTab() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <TabHeader
         title="Gestion des annonces"
         description="Validez, rejetez ou supprimez les annonces soumises par les utilisateurs."
         action={
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setSelected(new Set()); }}>
             <SelectTrigger className="w-52"><SelectValue placeholder="Filtrer par statut" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Toutes les annonces</SelectItem>
@@ -566,12 +608,38 @@ function AnnoncesTab() {
           </Select>
         }
       />
+
+      {someSelected && (
+        <div className="flex items-center gap-2 p-3 rounded-lg border border-primary/20 bg-primary/5">
+          <span className="text-sm font-medium text-primary">{selected.size} sélectionnée(s)</span>
+          <div className="flex gap-2 ml-auto">
+            <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-50 gap-1" onClick={() => handleBulk("publish")} disabled={bulkUpdate.isPending}>
+              <CheckCircle2 className="h-3.5 w-3.5" /> Publier tout
+            </Button>
+            <Button size="sm" variant="outline" className="text-yellow-700 border-yellow-300 hover:bg-yellow-50 gap-1" onClick={() => handleBulk("reject")} disabled={bulkUpdate.isPending}>
+              <XCircle className="h-3.5 w-3.5" /> Rejeter tout
+            </Button>
+            <Button size="sm" variant="outline" className="text-destructive border-destructive/30 hover:bg-destructive/10 gap-1" onClick={() => handleBulk("delete")} disabled={bulkUpdate.isPending}>
+              <Trash2 className="h-3.5 w-3.5" /> Supprimer tout
+            </Button>
+            <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => setSelected(new Set())}>
+              Annuler
+            </Button>
+          </div>
+        </div>
+      )}
+
       <Card className="border-border/50">
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[60px]">ID</TableHead>
+                <TableHead className="w-[40px]">
+                  <button onClick={toggleAll} className="p-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
+                    {allSelected ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4" />}
+                  </button>
+                </TableHead>
+                <TableHead className="w-[55px]">ID</TableHead>
                 <TableHead>Titre</TableHead>
                 <TableHead>Catégorie</TableHead>
                 <TableHead>Type</TableHead>
@@ -582,12 +650,17 @@ function AnnoncesTab() {
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={7} className="text-center py-10"><Loader2 className="h-6 w-6 animate-spin inline mr-2" /> Chargement...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center py-10"><Loader2 className="h-6 w-6 animate-spin inline mr-2" /> Chargement...</TableCell></TableRow>
               ) : ads?.length ? (
                 ads.map((ad) => (
-                  <TableRow key={ad.id}>
+                  <TableRow key={ad.id} className={selected.has(ad.id) ? "bg-primary/5" : ""}>
+                    <TableCell>
+                      <button onClick={() => toggleOne(ad.id)} className="p-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
+                        {selected.has(ad.id) ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4" />}
+                      </button>
+                    </TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">#{ad.id}</TableCell>
-                    <TableCell className="font-medium max-w-[180px] truncate" title={ad.title}>
+                    <TableCell className="font-medium max-w-[160px] truncate" title={ad.title}>
                       {ad.isPromoted && <Badge className="mr-1 bg-amber-500 text-white text-[10px]">Sponsorisé</Badge>}
                       {ad.title}
                     </TableCell>
@@ -618,7 +691,7 @@ function AnnoncesTab() {
                   </TableRow>
                 ))
               ) : (
-                <TableRow><TableCell colSpan={7} className="text-center py-10 text-muted-foreground">Aucune annonce trouvée.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center py-10 text-muted-foreground">Aucune annonce trouvée.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
@@ -1115,9 +1188,6 @@ function ParametresTab() {
     void isSecret;
   };
 
-  const secretConfigs = configs?.filter(c => c.isSecret) ?? [];
-  const publicConfigs = configs?.filter(c => !c.isSecret) ?? [];
-
   if (isLoading) return <div className="flex items-center gap-2 text-muted-foreground py-10"><Loader2 className="h-5 w-5 animate-spin" /> Chargement...</div>;
 
   const renderConfigRow = (c: NonNullable<typeof configs>[number]) => {
@@ -1157,31 +1227,40 @@ function ParametresTab() {
     );
   };
 
-  return (
-    <div className="space-y-8">
-      <TabHeader title="Paramètres" description="Configurez les intégrations et les paramètres globaux de la plateforme." />
-      <Card className="border-border/50">
-        <CardHeader className="bg-muted/30 border-b pb-4">
-          <div className="flex items-center gap-2">
-            <Settings2 className="h-5 w-5 text-primary" />
-            <CardTitle>Clés API et intégrations</CardTitle>
-          </div>
-          <CardDescription>Les clés secrètes sont masquées. Saisissez une nouvelle valeur pour remplacer.</CardDescription>
-        </CardHeader>
-        <CardContent className="pt-6 space-y-4">
-          {secretConfigs.length === 0 ? <p className="text-muted-foreground text-sm">Aucune clé secrète configurée.</p> : secretConfigs.map(renderConfigRow)}
-        </CardContent>
-      </Card>
+  type ConfigGroup = { label: string; icon: React.ElementType; description: string; keys: string[] };
+  const CONFIG_GROUPS: ConfigGroup[] = [
+    { label: "Identité de la plateforme", icon: Globe, description: "Nom, slogan, URL et coordonnées de contact.", keys: ["site_name", "site_tagline", "site_url", "contact_email", "from_email", "footer_address"] },
+    { label: "SEO", icon: Hash, description: "Optimisation pour les moteurs de recherche.", keys: ["seo_title", "seo_description", "seo_keywords", "og_image_url"] },
+    { label: "Réseaux sociaux", icon: Share2, description: "Liens vers vos pages et profils.", keys: ["facebook_url", "instagram_url", "twitter_url", "whatsapp_number", "youtube_url"] },
+    { label: "Maintenance", icon: Wrench, description: "Message affiché en mode maintenance.", keys: ["maintenance_message"] },
+    { label: "Intégrations & Clés API", icon: Key, description: "Clés secrètes — masquées par défaut.", keys: ["stripe_api_key", "stripe_webhook_secret", "resend_api_key", "google_analytics_id"] },
+  ];
 
-      <Card className="border-border/50">
-        <CardHeader className="bg-muted/30 border-b pb-4">
-          <CardTitle>Paramètres généraux</CardTitle>
-          <CardDescription>Configurez les paramètres publics de la plateforme.</CardDescription>
-        </CardHeader>
-        <CardContent className="pt-6 space-y-4">
-          {publicConfigs.length === 0 ? <p className="text-muted-foreground text-sm">Aucun paramètre à configurer.</p> : publicConfigs.map(renderConfigRow)}
-        </CardContent>
-      </Card>
+  const configByKey = Object.fromEntries((configs ?? []).map(c => [c.key, c]));
+
+  return (
+    <div className="space-y-6">
+      <TabHeader title="Paramètres plateforme" description="Contrôle total — configurez chaque aspect de LocalMarket." />
+      {CONFIG_GROUPS.map((group) => {
+        const groupConfigs = group.keys.map(k => configByKey[k]).filter(Boolean) as NonNullable<typeof configs>[number][];
+        const GroupIcon = group.icon;
+        return (
+          <Card key={group.label} className="border-border/50">
+            <CardHeader className="bg-muted/30 border-b pb-4">
+              <div className="flex items-center gap-2">
+                <GroupIcon className="h-4 w-4 text-primary" />
+                <CardTitle className="text-base">{group.label}</CardTitle>
+              </div>
+              <CardDescription className="text-xs mt-1">{group.description}</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-3">
+              {groupConfigs.length === 0
+                ? <p className="text-muted-foreground text-sm py-2">Aucun paramètre disponible.</p>
+                : groupConfigs.map(renderConfigRow)}
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }

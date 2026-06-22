@@ -222,6 +222,25 @@ paths:
         "204":
           description: Deleted
 
+  /admin/ads/bulk:
+    post:
+      operationId: adminBulkUpdateAds
+      tags: [admin]
+      summary: Admin - bulk approve / reject / delete ads
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkAdAction"
+      responses:
+        "200":
+          description: Number of ads affected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BulkResult"
+
   /admin/branding:
     get:
       operationId: getBranding
@@ -1151,6 +1170,25 @@ components:
       properties:
         enabled:
           type: boolean
+
+    BulkAdAction:
+      type: object
+      required: [ids, action]
+      properties:
+        ids:
+          type: array
+          items:
+            type: integer
+        action:
+          type: string
+          enum: [publish, reject, delete]
+
+    BulkResult:
+      type: object
+      required: [affected]
+      properties:
+        affected:
+          type: integer
 
     LoginResult:
       type: object

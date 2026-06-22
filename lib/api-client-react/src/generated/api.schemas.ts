@@ -279,6 +279,24 @@ export interface PlatformModeInput {
   enabled: boolean;
 }
 
+export type BulkAdActionAction = typeof BulkAdActionAction[keyof typeof BulkAdActionAction];
+
+
+export const BulkAdActionAction = {
+  publish: 'publish',
+  reject: 'reject',
+  delete: 'delete',
+} as const;
+
+export interface BulkAdAction {
+  ids: number[];
+  action: BulkAdActionAction;
+}
+
+export interface BulkResult {
+  affected: number;
+}
+
 export interface LoginResult {
   success: boolean;
   token: string;
