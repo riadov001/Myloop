@@ -17,6 +17,9 @@ app.use(compression({
   },
 }));
 
+// ⚠️ Webhook Stripe : doit être enregistré AVANT express.json() pour conserver le body brut
+app.use("/api/webhooks/stripe", express.raw({ type: "application/json" }));
+
 app.use(
   pinoHttp({
     logger,

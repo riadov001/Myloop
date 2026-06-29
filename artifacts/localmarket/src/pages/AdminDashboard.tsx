@@ -25,7 +25,7 @@ import {
   CheckCircle2, XCircle, Trash2, Eye, EyeOff, Paintbrush, Loader2, Plus, Pencil,
   Settings2, Star, Users, Shield, Crown, ToggleLeft, FileText, UserCheck,
   TrendingUp, Clock, Activity, AlertTriangle, CheckSquare, Square, Globe, Hash,
-  Share2, Wrench, Key, ChevronDown, ChevronRight,
+  Share2, Wrench, Key, ChevronDown, ChevronRight, CreditCard, Heart, RefreshCw,
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -54,6 +54,7 @@ export default function AdminDashboard() {
         {activeTab === "unites" && <UnitesTab />}
         {activeTab === "tarifs" && <TarifsTab />}
         {activeTab === "branding" && <BrandingTab />}
+        {activeTab === "paiements" && <PaiementsTab />}
         {activeTab === "settings" && <ParametresTab />}
         {activeTab === "admins" && role === "root" && <AdminsTab />}
         {activeTab === "admins" && role !== "root" && (
@@ -1358,6 +1359,299 @@ function BrandingTab() {
           </Card>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Onglet Paiements ───────────────────────────────────────────────────────
+
+const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+function getAdminHeaders() {
+  return {
+    "x-admin-token": localStorage.getItem("adminToken") ?? "",
+    "Content-Type": "application/json",
+  };
+}
+
+type SubStatus = "active" | "cancelled" | "past_due" | "trialing" | "expired" | "pending";
+type DonStatus = "pending" | "completed" | "failed" | "refunded";
+
+interface SubRow {
+  id: number; status: SubStatus; stripeSubscriptionId: string | null;
+  cancelAtPeriodEnd: boolean; currentPeriodEnd: string | null;
+  createdAt: string; userName: string | null; userEmail: string | null; planName: string | null; priceMonthly: string | null;
+}
+
+interface DonRow {
+  id: number; amount: number; currency: string; donorName: string | null;
+  donorEmail: string | null; status: DonStatus; stripeSessionId: string | null;
+  createdAt: string; userName: string | null; userEmail: string | null;
+}
+
+function SubStatusBadge({ status }: { status: SubStatus }) {
+  const map: Record<SubStatus, { label: string; cls: string }> = {
+    active: { label: "Actif", cls: "bg-green-100 text-green-800" },
+    cancelled: { label: "Annulé", cls: "bg-slate-100 text-slate-600" },
+    past_due: { label: "Retard", cls: "bg-red-100 text-red-700" },
+    trialing: { label: "Essai", cls: "bg-blue-100 text-blue-700" },
+    expired: { label: "Expiré", cls: "bg-orange-100 text-orange-700" },
+    pending: { label: "En attente", cls: "bg-yellow-100 text-yellow-700" },
+  };
+  const { label, cls } = map[status] ?? { label: status, cls: "" };
+  return <Badge className={cls}>{label}</Badge>;
+}
+
+function DonStatusBadge({ status }: { status: DonStatus }) {
+  const map: Record<DonStatus, { label: string; cls: string }> = {
+    completed: { label: "Complété", cls: "bg-green-100 text-green-800" },
+    pending: { label: "En attente", cls: "bg-yellow-100 text-yellow-700" },
+    failed: { label: "Échoué", cls: "bg-red-100 text-red-700" },
+    refunded: { label: "Remboursé", cls: "bg-slate-100 text-slate-600" },
+  };
+  const { label, cls } = map[status] ?? { label: status, cls: "" };
+  return <Badge className={cls}>{label}</Badge>;
+}
+
+function PaiementsTab() {
+  const { toast } = useToast();
+  const [activeSection, setActiveSection] = useState<"subscriptions" | "donations">("subscriptions");
+  const [subs, setSubs] = useState<SubRow[]>([]);
+  const [dons, setDons] = useState<DonRow[]>([]);
+  const [subStats, setSubStats] = useState<{ total: number; active: number; cancelled: number; pastDue: number } | null>(null);
+  const [donTotal, setDonTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const [subsRes, donsRes, subStatsRes] = await Promise.all([
+        fetch(`${API_BASE}/api/admin/payments/subscriptions?limit=50`, { headers: getAdminHeaders() }),
+        fetch(`${API_BASE}/api/admin/payments/donations?limit=50`, { headers: getAdminHeaders() }),
+        fetch(`${API_BASE}/api/admin/payments/subscriptions/stats`, { headers: getAdminHeaders() }),
+      ]);
+      const [subsData, donsData, ssData] = await Promise.all([subsRes.json(), donsRes.json(), subStatsRes.json()]);
+      setSubs(subsData.rows ?? []);
+      setDons(donsData.rows ?? []);
+      setDonTotal(donsData.totalCompleted ?? 0);
+      setSubStats(ssData);
+    } catch {
+      toast({ title: "Erreur", description: "Impossible de charger les données.", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const updateSubStatus = async (id: number, status: SubStatus) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/payments/subscriptions/${id}`, {
+        method: "PATCH", headers: getAdminHeaders(), body: JSON.stringify({ status }),
+      });
+      if (!res.ok) throw new Error();
+      setSubs(prev => prev.map(s => s.id === id ? { ...s, status } : s));
+      toast({ title: "Statut mis à jour" });
+    } catch { toast({ title: "Erreur", variant: "destructive" }); }
+  };
+
+  const deleteSub = async (id: number) => {
+    if (!confirm("Supprimer cet abonnement de la base ?")) return;
+    try {
+      await fetch(`${API_BASE}/api/admin/payments/subscriptions/${id}`, { method: "DELETE", headers: getAdminHeaders() });
+      setSubs(prev => prev.filter(s => s.id !== id));
+      toast({ title: "Abonnement supprimé" });
+    } catch { toast({ title: "Erreur", variant: "destructive" }); }
+  };
+
+  const updateDonStatus = async (id: number, status: DonStatus) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/payments/donations/${id}`, {
+        method: "PATCH", headers: getAdminHeaders(), body: JSON.stringify({ status }),
+      });
+      if (!res.ok) throw new Error();
+      setDons(prev => prev.map(d => d.id === id ? { ...d, status } : d));
+      toast({ title: "Statut mis à jour" });
+    } catch { toast({ title: "Erreur", variant: "destructive" }); }
+  };
+
+  const deleteDon = async (id: number) => {
+    if (!confirm("Supprimer ce don de la base ?")) return;
+    try {
+      await fetch(`${API_BASE}/api/admin/payments/donations/${id}`, { method: "DELETE", headers: getAdminHeaders() });
+      setDons(prev => prev.filter(d => d.id !== id));
+      toast({ title: "Don supprimé" });
+    } catch { toast({ title: "Erreur", variant: "destructive" }); }
+  };
+
+  return (
+    <div>
+      <TabHeader
+        title="Paiements"
+        description="Gérez les abonnements et les dons de la plateforme."
+        action={
+          <Button variant="outline" size="sm" onClick={load} className="gap-1.5">
+            <RefreshCw className="h-4 w-4" /> Actualiser
+          </Button>
+        }
+      />
+
+      {/* Stats cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <Card><CardContent className="pt-5 pb-4">
+          <div className="text-2xl font-bold">{subStats?.total ?? "—"}</div>
+          <div className="text-xs text-muted-foreground mt-1">Total abonnements</div>
+        </CardContent></Card>
+        <Card><CardContent className="pt-5 pb-4">
+          <div className="text-2xl font-bold text-green-600">{subStats?.active ?? "—"}</div>
+          <div className="text-xs text-muted-foreground mt-1">Actifs</div>
+        </CardContent></Card>
+        <Card><CardContent className="pt-5 pb-4">
+          <div className="text-2xl font-bold text-red-600">{subStats?.pastDue ?? "—"}</div>
+          <div className="text-xs text-muted-foreground mt-1">En retard</div>
+        </CardContent></Card>
+        <Card><CardContent className="pt-5 pb-4">
+          <div className="text-2xl font-bold text-primary">{(donTotal / 100).toFixed(2)} €</div>
+          <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1"><Heart className="h-3 w-3 text-red-500" /> Dons collectés</div>
+        </CardContent></Card>
+      </div>
+
+      {/* Section tabs */}
+      <div className="flex gap-2 mb-4">
+        <Button
+          variant={activeSection === "subscriptions" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setActiveSection("subscriptions")}
+          className="gap-1.5"
+        >
+          <CreditCard className="h-4 w-4" /> Abonnements ({subs.length})
+        </Button>
+        <Button
+          variant={activeSection === "donations" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setActiveSection("donations")}
+          className="gap-1.5"
+        >
+          <Heart className="h-4 w-4" /> Dons ({dons.length})
+        </Button>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+      ) : activeSection === "subscriptions" ? (
+        <Card>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Utilisateur</TableHead>
+                  <TableHead>Plan</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead className="hidden md:table-cell">Fin période</TableHead>
+                  <TableHead className="hidden lg:table-cell">Stripe ID</TableHead>
+                  <TableHead className="hidden md:table-cell">Créé le</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {subs.length === 0 ? (
+                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-10">Aucun abonnement</TableCell></TableRow>
+                ) : subs.map(sub => (
+                  <TableRow key={sub.id}>
+                    <TableCell>
+                      <div className="font-medium text-sm">{sub.userName ?? "—"}</div>
+                      <div className="text-xs text-muted-foreground">{sub.userEmail ?? "—"}</div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm font-medium">{sub.planName ?? "—"}</div>
+                      {sub.priceMonthly && <div className="text-xs text-muted-foreground">{sub.priceMonthly} €/mois</div>}
+                    </TableCell>
+                    <TableCell><SubStatusBadge status={sub.status} /></TableCell>
+                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                      {sub.currentPeriodEnd ? format(new Date(sub.currentPeriodEnd), "dd/MM/yyyy", { locale: fr }) : "—"}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      <span className="font-mono text-xs text-muted-foreground">{sub.stripeSubscriptionId?.slice(0, 20) ?? "—"}…</span>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                      {format(new Date(sub.createdAt), "dd/MM/yy", { locale: fr })}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Select value={sub.status} onValueChange={(v) => updateSubStatus(sub.id, v as SubStatus)}>
+                          <SelectTrigger className="h-7 w-28 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {(["active", "cancelled", "past_due", "trialing", "expired", "pending"] as SubStatus[]).map(s => (
+                              <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600" onClick={() => deleteSub(sub.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+      ) : (
+        <Card>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Donateur</TableHead>
+                  <TableHead>Montant</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead className="hidden md:table-cell">Session Stripe</TableHead>
+                  <TableHead className="hidden md:table-cell">Date</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {dons.length === 0 ? (
+                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-10">Aucun don</TableCell></TableRow>
+                ) : dons.map(don => (
+                  <TableRow key={don.id}>
+                    <TableCell>
+                      <div className="font-medium text-sm">{don.donorName ?? don.userName ?? "Anonyme"}</div>
+                      <div className="text-xs text-muted-foreground">{don.donorEmail ?? don.userEmail ?? "—"}</div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-bold text-sm">{(don.amount / 100).toFixed(2)} €</div>
+                    </TableCell>
+                    <TableCell><DonStatusBadge status={don.status} /></TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <span className="font-mono text-xs text-muted-foreground">{don.stripeSessionId?.slice(0, 16) ?? "—"}…</span>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                      {format(new Date(don.createdAt), "dd/MM/yy", { locale: fr })}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Select value={don.status} onValueChange={(v) => updateDonStatus(don.id, v as DonStatus)}>
+                          <SelectTrigger className="h-7 w-28 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {(["pending", "completed", "failed", "refunded"] as DonStatus[]).map(s => (
+                              <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600" onClick={() => deleteDon(don.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

@@ -16,6 +16,8 @@ import platformConfigRouter from "./platform-config";
 import billingRouter from "./billing";
 import donationsRouter from "./donations";
 import merchantRouter from "./merchant";
+import webhookRouter from "./webhook";
+import adminPaymentsRouter from "./admin-payments";
 
 const router: IRouter = Router();
 
@@ -36,5 +38,7 @@ router.use(platformConfigRouter);
 router.use(billingRouter);
 router.use(donationsRouter);
 router.use(merchantRouter);
+router.use(webhookRouter);
+router.use(adminPaymentsRouter);
 
 export default router;

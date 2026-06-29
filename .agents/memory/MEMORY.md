@@ -6,3 +6,4 @@
 - [Ads schema notes](ads-schema-notes.md) — adsTable.userId is nullable integer (backward compat); status enum is "pending"/"published"/"rejected" (NOT "active").
 - [Stripe client location](stripe-client-location.md) — Stripe client at src/stripeClient.ts (exports getUncachableStripeClient, getStripeSync); no stripe/ subdirectory.
 - [Workspace pkg linking](workspace-pkg-linking.md) — @workspace/* packages must be added by editing package.json directly, then run pnpm install; pnpm add fails for workspace packages.
+- [Stripe webhook raw body](stripe-webhook-raw.md) — Webhook must mount express.raw() at /api/webhooks/stripe BEFORE express.json() in app.ts; adminAuth is named export (not default) from middleware/adminAuth.ts; constructEvent() needs `as unknown as typeof event` cast to avoid TS2352.

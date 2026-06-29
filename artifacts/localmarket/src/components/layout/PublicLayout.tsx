@@ -116,6 +116,9 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
                   <DropdownMenuItem onClick={() => setLocation("/deposer")} className="cursor-pointer">
                     Déposer une annonce
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setLocation("/espace-commercant")} className="cursor-pointer">
+                    Mon espace commerçant
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600 focus:text-red-600">
                     <LogOut className="h-4 w-4 mr-2" />
@@ -179,6 +182,13 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
                         <p className="text-xs text-muted-foreground">Connecté</p>
                       </div>
                     </div>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start"
+                      onClick={() => { setLocation("/espace-commercant"); setOpen(false); }}
+                    >
+                      Mon espace commerçant
+                    </Button>
                     <Button
                       variant="outline"
                       className="w-full justify-start text-red-600 border-red-200 gap-2"

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard, LogOut, Settings, Palette, List, Tag, Scale,
-  Star, Users, Shield, ToggleLeft, ChevronRight, Menu, X, Triangle, Crown,
+  Star, Users, Shield, ToggleLeft, ChevronRight, Menu, X, Triangle, Crown, CreditCard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,7 @@ const NAV_ITEMS = [
   { tab: "categories", label: "Catégories", icon: Tag, roles: ["root", "admin"] },
   { tab: "unites", label: "Unités", icon: Scale, roles: ["root", "admin"] },
   { tab: "branding", label: "Branding", icon: Palette, roles: ["root", "admin"] },
+  { tab: "paiements", label: "Paiements", icon: CreditCard, roles: ["root", "admin"] },
   { tab: "settings", label: "Paramètres", icon: Settings, roles: ["root", "admin"] },
   { tab: "admins", label: "Gestion admins", icon: Users, roles: ["root"] },
 ];
