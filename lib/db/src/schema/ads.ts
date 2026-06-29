@@ -8,6 +8,7 @@ export const subscriptionTypeEnum = pgEnum("subscription_type", ["none", "weekly
 
 export const adsTable = pgTable("ads", {
   id: serial("id").primaryKey(),
+  userId: integer("user_id"),  // nullable — rétrocompatible avec annonces existantes
   title: text("title").notNull(),
   description: text("description"),
   location: text("location").notNull(),

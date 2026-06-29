@@ -78,6 +78,9 @@ export default function Login() {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Mot de passe</Label>
+                  <Link href="/mot-de-passe-oublie" className="text-xs text-primary hover:underline">
+                    Mot de passe oublié ?
+                  </Link>
                 </div>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -114,6 +117,9 @@ export default function Login() {
                 S'inscrire gratuitement
               </Link>
             </p>
+            <Link href="/espace-commercant" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+              Accéder à mon espace commerçant
+            </Link>
           </CardFooter>
         </Card>
 

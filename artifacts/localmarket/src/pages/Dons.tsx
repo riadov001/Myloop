@@ -24,24 +24,36 @@ export default function Dons() {
 
   const amount = custom ? Number(custom) : (selected ?? 0);
 
-  const handleDonate = (e: React.FormEvent) => {
+  const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+  const handleDonate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || amount < 1) {
       toast({ title: "Montant invalide", description: "Veuillez saisir un montant d'au moins 1 €.", variant: "destructive" });
       return;
     }
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      toast({
-        title: "Merci pour votre soutien !",
-        description: `Votre don de ${amount} € a bien été enregistré. Un email de confirmation vous sera envoyé.`,
+    try {
+      const res = await fetch(`${API_BASE}/api/donations/checkout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: Math.round(amount * 100), // en centimes
+          donorName: name || undefined,
+          donorEmail: email || undefined,
+        }),
       });
-      setName("");
-      setEmail("");
-      setCustom("");
-      setSelected(10);
-    }, 1200);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Erreur lors de la création du don.");
+      if (data.url) {
+        window.location.href = data.url; // redirection Stripe Checkout
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Erreur lors de la création du don.";
+      toast({ title: "Erreur", description: msg, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

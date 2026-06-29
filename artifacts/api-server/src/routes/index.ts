@@ -13,6 +13,9 @@ import unitsRouter from "./units";
 import promotionPricesRouter from "./promotion-prices";
 import plansRouter from "./plans";
 import platformConfigRouter from "./platform-config";
+import billingRouter from "./billing";
+import donationsRouter from "./donations";
+import merchantRouter from "./merchant";
 
 const router: IRouter = Router();
 
@@ -30,5 +33,8 @@ router.use(unitsRouter);
 router.use(promotionPricesRouter);
 router.use(plansRouter);
 router.use(platformConfigRouter);
+router.use(billingRouter);
+router.use(donationsRouter);
+router.use(merchantRouter);
 
 export default router;

@@ -1,24 +1,38 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { RegisterBody, UserLoginBody } from "@workspace/api-zod";
+import { EmailService } from "@workspace/email";
+import { z } from "zod/v4";
 
 const router = Router();
 
 const JWT_SECRET = process.env.JWT_SECRET ?? "localmarket-dev-secret-2026";
 const JWT_EXPIRES = "7d";
 
-function makeToken(user: { id: number; name: string; email: string }) {
-  return jwt.sign({ id: user.id, name: user.name, email: user.email }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
+function makeToken(user: { id: number; name: string; email: string; role: string }) {
+  return jwt.sign(
+    { id: user.id, name: user.name, email: user.email, role: user.role },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRES }
+  );
 }
 
-function toProfile(user: { id: number; name: string; email: string; createdAt: Date }) {
-  return { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt.toISOString() };
+function toProfile(user: typeof usersTable.$inferSelect) {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    emailVerified: user.emailVerified,
+    createdAt: user.createdAt.toISOString(),
+  };
 }
 
-// POST /auth/register
+// POST /auth/register (comportement existant préservé + rôle + email bienvenue)
 router.post("/auth/register", async (req, res) => {
   try {
     const { name, email, password } = RegisterBody.parse(req.body);
@@ -28,8 +42,16 @@ router.post("/auth/register", async (req, res) => {
       return;
     }
     const passwordHash = await bcrypt.hash(password, 12);
-    const [user] = await db.insert(usersTable).values({ name, email, passwordHash }).returning();
+    const verifyToken = crypto.randomBytes(32).toString("hex");
+    const verifyExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const [user] = await db.insert(usersTable).values({
+      name, email, passwordHash,
+      emailVerifyToken: verifyToken,
+      emailVerifyTokenExpires: verifyExpires,
+    }).returning();
     const token = makeToken(user);
+    // Non-bloquant — ne doit pas faire échouer l'inscription
+    EmailService.sendWelcome(email, name).catch(() => {});
     res.status(201).json({ token, user: toProfile(user) });
   } catch (err) {
     req.log.error(err);
@@ -37,20 +59,15 @@ router.post("/auth/register", async (req, res) => {
   }
 });
 
-// POST /auth/login
+// POST /auth/login (comportement existant préservé + rôle dans le token)
 router.post("/auth/login", async (req, res) => {
   try {
     const { email, password } = UserLoginBody.parse(req.body);
     const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
-    if (!user) {
-      res.status(401).json({ error: "Identifiants incorrects." });
-      return;
-    }
+    if (!user) { res.status(401).json({ error: "Identifiants incorrects." }); return; }
     const valid = await bcrypt.compare(password, user.passwordHash);
-    if (!valid) {
-      res.status(401).json({ error: "Identifiants incorrects." });
-      return;
-    }
+    if (!valid) { res.status(401).json({ error: "Identifiants incorrects." }); return; }
+    await db.update(usersTable).set({ lastLoginAt: new Date() }).where(eq(usersTable.id, user.id));
     const token = makeToken(user);
     res.json({ token, user: toProfile(user) });
   } catch (err) {
@@ -59,24 +76,69 @@ router.post("/auth/login", async (req, res) => {
   }
 });
 
-// GET /auth/me
+// GET /auth/me (comportement existant préservé + champs étendus)
 router.get("/auth/me", async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith("Bearer ")) {
-      res.status(401).json({ error: "Token manquant." });
-      return;
-    }
+    if (!authHeader?.startsWith("Bearer ")) { res.status(401).json({ error: "Token manquant." }); return; }
     const token = authHeader.slice(7);
     const payload = jwt.verify(token, JWT_SECRET) as { id: number };
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, payload.id)).limit(1);
-    if (!user) {
-      res.status(401).json({ error: "Utilisateur introuvable." });
-      return;
-    }
+    if (!user) { res.status(401).json({ error: "Utilisateur introuvable." }); return; }
     res.json(toProfile(user));
   } catch {
     res.status(401).json({ error: "Token invalide ou expiré." });
+  }
+});
+
+// POST /auth/forgot-password
+router.post("/auth/forgot-password", async (req, res) => {
+  try {
+    const { email } = z.object({ email: z.string().email() }).parse(req.body);
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
+    if (user) {
+      const token = crypto.randomBytes(32).toString("hex");
+      const expires = new Date(Date.now() + 60 * 60 * 1000);
+      await db.update(usersTable).set({ resetToken: token, resetTokenExpires: expires }).where(eq(usersTable.id, user.id));
+      EmailService.sendPasswordReset(email, user.name, token).catch(() => {});
+    }
+    res.json({ message: "Si cette adresse est enregistrée, un email de réinitialisation vous a été envoyé." });
+  } catch (err) {
+    req.log.error(err);
+    res.status(400).json({ error: "Données invalides." });
+  }
+});
+
+// POST /auth/reset-password
+router.post("/auth/reset-password", async (req, res) => {
+  try {
+    const { token, password } = z.object({ token: z.string().min(1), password: z.string().min(8) }).parse(req.body);
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.resetToken, token)).limit(1);
+    if (!user || !user.resetTokenExpires || user.resetTokenExpires < new Date()) {
+      res.status(400).json({ error: "Lien de réinitialisation invalide ou expiré." }); return;
+    }
+    const passwordHash = await bcrypt.hash(password, 12);
+    await db.update(usersTable).set({ passwordHash, resetToken: null, resetTokenExpires: null }).where(eq(usersTable.id, user.id));
+    res.json({ message: "Mot de passe réinitialisé avec succès." });
+  } catch (err) {
+    req.log.error(err);
+    res.status(400).json({ error: "Données invalides." });
+  }
+});
+
+// POST /auth/verify-email
+router.post("/auth/verify-email", async (req, res) => {
+  try {
+    const { token } = z.object({ token: z.string().min(1) }).parse(req.body);
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.emailVerifyToken, token)).limit(1);
+    if (!user || !user.emailVerifyTokenExpires || user.emailVerifyTokenExpires < new Date()) {
+      res.status(400).json({ error: "Lien de vérification invalide ou expiré." }); return;
+    }
+    await db.update(usersTable).set({ emailVerified: true, emailVerifyToken: null, emailVerifyTokenExpires: null }).where(eq(usersTable.id, user.id));
+    res.json({ message: "Email vérifié avec succès." });
+  } catch (err) {
+    req.log.error(err);
+    res.status(400).json({ error: "Données invalides." });
   }
 });
 

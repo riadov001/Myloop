@@ -14,6 +14,9 @@ import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import Tarifs from "@/pages/Tarifs";
 import Dons from "@/pages/Dons";
+import EspaceCommercant from "@/pages/EspaceCommercant";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +33,9 @@ function Router() {
       <Route path="/inscription" component={Register} />
       <Route path="/tarifs" component={Tarifs} />
       <Route path="/dons" component={Dons} />
+      <Route path="/espace-commercant" component={EspaceCommercant} />
+      <Route path="/mot-de-passe-oublie" component={ForgotPassword} />
+      <Route path="/reinitialisation-mot-de-passe" component={ResetPassword} />
       <Route path="/mentions-legales" component={Legal} />
       <Route path="/cgu" component={CGU} />
       <Route path="/politique-confidentialite" component={Privacy} />
