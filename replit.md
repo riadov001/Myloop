@@ -45,10 +45,7 @@ Plateforme d'échanges locaux connectant voisins, agriculteurs et artisans pour 
 - **Déposer une publicité**: formulaire complet soumis en attente de validation admin
 - **Espace Admin** (`/admin`): login protégé → dashboard avec 3 onglets: Annonces (valider/refuser/supprimer), Branding (logo, couleurs, police, aperçu live), Paramètres
 
-## Admin credentials (dev only)
 
-- Email: `admin@localmarket.fr`
-- Password: `admin123`
 
 ## User preferences
 
